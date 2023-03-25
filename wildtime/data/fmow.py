@@ -77,6 +77,15 @@ class FMoWBase(Dataset):
     def update_historical(self, idx, data_del=False):
         time = self.ENV[idx]
         prev_time = self.ENV[idx - 1]
+
+        if 'timestamp' not in self.datasets[prev_time][self.mode]:
+            prev_timestamp = np.zeros_like(self.datasets[prev_time][self.mode]['image_idxs'])
+        else:
+            prev_timestamp = self.datasets[prev_time][self.mode]['timestamp']
+        current_timestamp = time * np.ones_like(self.datasets[time][self.mode]['image_idxs'])
+
+        self.datasets[time][self.mode]['timestamp'] = np.concatenate((current_timestamp, prev_timestamp), axis=0)
+
         self.datasets[time][self.mode]['image_idxs'] = np.concatenate(
             (self.datasets[time][self.mode]['image_idxs'], self.datasets[prev_time][self.mode]['image_idxs']), axis=0)
         self.datasets[time][self.mode]['labels'] = np.concatenate(
@@ -134,16 +143,16 @@ class FMoW(FMoWBase):
 
             sel_idx = np.random.choice(np.arange(start_idx, end_idx))
             idx = sel_idx
-
         image_tensor = self.transform(self.get_input(idx))
+        timestamp_tensor = self.datasets[self.current_time][self.mode]['timestamp'][idx]
+
         label_tensor = torch.LongTensor([self.datasets[self.current_time][self.mode]['labels'][idx]])
 
         if self.args.method in ['simclr', 'swav'] and self.ssl_training:
             tensor_to_PIL = transforms.ToPILImage()
             image_tensor = tensor_to_PIL(image_tensor)
             return image_tensor, label_tensor, ''
-
-        return image_tensor, label_tensor
+        return (image_tensor, timestamp_tensor), label_tensor
 
     def __len__(self):
         return len(self.datasets[self.current_time][self.mode]['labels'])

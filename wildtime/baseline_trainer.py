@@ -139,8 +139,11 @@ def trainer_init(args):
 
 def init(args):
     dataset, criterion, network, optimizer, scheduler = trainer_init(args)
+    if args.torch_compile:
+        network = torch.compile(network)
     method_dict = {'groupdro': 'GroupDRO', 'coral': 'DeepCORAL', 'irm': 'IRM', 'ft': 'FT', 'erm': 'ERM', 'ewc': 'EWC',
                   'agem': 'AGEM', 'si': 'SI', 'simclr': 'SimCLR', 'swav': 'SwaV', 'swa': 'SWA'}
+    print(network)
     trainer = globals()[method_dict[args.method]](args, dataset, network, criterion, optimizer, scheduler)
     return trainer
 

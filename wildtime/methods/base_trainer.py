@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 from sklearn import metrics
 from tdc import Evaluator
+from tqdm import tqdm
 
 from .dataloaders import FastDataLoader, InfiniteDataLoader
 from .utils import prepare_data, forward_pass, get_collate_functions
@@ -72,14 +73,20 @@ class BaseTrainer:
     def train_step(self, dataloader):
         self.network.train()
         loss_all = []
+        progress_bar = tqdm(total=self.train_update_iter)
+
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
-            loss, logits, y = forward_pass(x, y, self.train_dataset, self.network, self.criterion, self.lisa, self.mixup,
-                                           self.cut_mix, self.mix_alpha)
+
+            loss, logits, y = forward_pass(
+                x, y, self.train_dataset, self.network, 
+                self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
             loss_all.append(loss.item())
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+            progress_bar.update(1)
+
             if step == self.train_update_iter:
                 if self.scheduler is not None:
                     self.scheduler.step()

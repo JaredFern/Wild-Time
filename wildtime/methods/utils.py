@@ -18,8 +18,8 @@ def prepare_data(x, y, dataset_name: str):
         if len(y.shape) > 1:
             y = y.squeeze(1).cuda()
     elif dataset_name in ['fmow', 'yearbook']:
-        if isinstance(x, tuple):
-            x = (elt.cuda() for elt in x)
+        if isinstance(x, tuple) or isinstance(x, list):
+            x = list(elt.cuda() for elt in x)
         else:
             x = x.cuda()
         if len(y.shape) > 1:

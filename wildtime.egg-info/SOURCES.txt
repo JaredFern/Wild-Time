@@ -20,7 +20,6 @@ wildtime/configs/eval_fix/configs_fmow.py
 wildtime/configs/eval_fix/configs_huffpost.py
 wildtime/configs/eval_fix/configs_mimic_mortality.py
 wildtime/configs/eval_fix/configs_mimic_readmission.py
-wildtime/configs/eval_fix/configs_precipitation.py
 wildtime/configs/eval_fix/configs_yearbook.py
 wildtime/configs/eval_stream/__init__.py
 wildtime/configs/eval_stream/configs_arxiv.py
@@ -29,7 +28,6 @@ wildtime/configs/eval_stream/configs_fmow.py
 wildtime/configs/eval_stream/configs_huffpost.py
 wildtime/configs/eval_stream/configs_mimic_mortality.py
 wildtime/configs/eval_stream/configs_mimic_readmission.py
-wildtime/configs/eval_stream/configs_precipitation.py
 wildtime/configs/eval_stream/configs_yearbook.py
 wildtime/data/__init__.py
 wildtime/data/arxiv.py
@@ -37,11 +35,8 @@ wildtime/data/drug.py
 wildtime/data/fmow.py
 wildtime/data/huffpost.py
 wildtime/data/mimic.py
-wildtime/data/precipitation.py
 wildtime/data/utils.py
 wildtime/data/yearbook.py
-wildtime/data/data/__init__.py
-wildtime/data/data/utils/__init__.py
 wildtime/methods/__init__.py
 wildtime/methods/base_trainer.py
 wildtime/methods/dataloaders.py
@@ -76,9 +71,7 @@ wildtime/networks/__init__.py
 wildtime/networks/article.py
 wildtime/networks/drug.py
 wildtime/networks/fmow.py
-wildtime/networks/fttransformer.py
 wildtime/networks/mimic.py
 wildtime/networks/mimic_tokenizer.py
 wildtime/networks/mimic_vocab.py
-wildtime/networks/precipitation.py
 wildtime/networks/yearbook.py

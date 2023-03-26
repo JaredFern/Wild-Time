@@ -49,7 +49,8 @@ class FMoWNetwork(nn.Module):
             out = self.prototypes(out)
             return out
         elif True:
-            out = self.time_conditioned_classifier(torch.cat([out, torch.unsqueeze(timestamp, dim=1)], dim=1))
+            out = self.time_conditioned_classifier(
+                torch.cat([out, torch.unsqueeze(timestamp, dim=1)], dim=1))
             return out
         else:
             return self.classifier(out)

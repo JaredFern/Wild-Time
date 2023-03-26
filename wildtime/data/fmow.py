@@ -144,7 +144,10 @@ class FMoW(FMoWBase):
             sel_idx = np.random.choice(np.arange(start_idx, end_idx))
             idx = sel_idx
         image_tensor = self.transform(self.get_input(idx))
-        timestamp_tensor = self.datasets[self.current_time][self.mode]['timestamp'][idx]
+        if 'timestamp' in self.datasets[self.current_time][self.mode]:
+            timestamp_tensor = self.datasets[self.current_time][self.mode]['timestamp'][idx]
+        else:
+            timestamp_tensor = self.current_time
 
         label_tensor = torch.LongTensor([self.datasets[self.current_time][self.mode]['labels'][idx]])
 

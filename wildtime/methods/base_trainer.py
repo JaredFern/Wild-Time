@@ -37,10 +37,12 @@ class BaseTrainer:
         self.cut_mix = args.cut_mix
         self.mix_alpha = args.mix_alpha
         self.mini_batch_size = args.mini_batch_size
-        self.num_workers = args.num_workers
+        self.eval_batch_size = args.eval_batch_size
         self.base_trainer_str = self.get_base_trainer_str()
 
         # Evaluation and metrics
+        self.num_workers = args.num_workers
+        self.checkpoint_path = args.checkpoint_path
         self.split_time = args.split_time
         self.eval_next_timestamps = args.eval_next_timestamps
         self.task_accuracies = {}
@@ -177,7 +179,7 @@ class BaseTrainer:
         for i in range(start, min(start + self.eval_next_timestamps, len(self.eval_dataset.ENV))):
             test_time = self.eval_dataset.ENV[i]
             self.eval_dataset.update_current_timestamp(test_time)
-            test_time_dataloader = FastDataLoader(dataset=self.eval_dataset, batch_size=self.mini_batch_size,
+            test_time_dataloader = FastDataLoader(dataset=self.eval_dataset, batch_size=self.eval_batch_size,
                                                   num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
             metric = self.network_evaluation(test_time_dataloader)
             metrics.append(metric)
@@ -220,7 +222,7 @@ class BaseTrainer:
                 self.eval_dataset.mode = 1
                 self.eval_dataset.update_current_timestamp(timestamp)
                 test_id_dataloader = FastDataLoader(dataset=self.eval_dataset,
-                                                    batch_size=self.mini_batch_size,
+                                                    batch_size=self.eval_batch_size,
                                                     num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
                 id_metric = self.network_evaluation(test_id_dataloader)
                 print(f'ID {self.eval_metric}: \t{id_metric}\n')
@@ -228,7 +230,7 @@ class BaseTrainer:
                 self.eval_dataset.mode = 2
                 self.eval_dataset.update_current_timestamp(timestamp)
                 test_ood_dataloader = FastDataLoader(dataset=self.eval_dataset,
-                                                     batch_size=self.mini_batch_size,
+                                                     batch_size=self.eval_batch_size,
                                                      num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
                 acc = self.network_evaluation(test_ood_dataloader)
                 print(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
@@ -246,14 +248,14 @@ class BaseTrainer:
                 self.eval_dataset.mode = 1
                 self.eval_dataset.update_current_timestamp(timestamp)
                 test_id_dataloader = FastDataLoader(dataset=self.eval_dataset,
-                                                    batch_size=self.mini_batch_size,
+                                                    batch_size=self.eval_batch_size,
                                                     num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
                 metric = self.network_evaluation(test_id_dataloader)
             else:
                 self.eval_dataset.mode = 2
                 self.eval_dataset.update_current_timestamp(timestamp)
                 test_ood_dataloader = FastDataLoader(dataset=self.eval_dataset,
-                                                     batch_size=self.mini_batch_size,
+                                                     batch_size=self.eval_batch_size,
                                                      num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
                 metric = self.network_evaluation(test_ood_dataloader)
             print(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {metric}')
@@ -298,7 +300,7 @@ class BaseTrainer:
             self.eval_dataset.mode = 1
             self.eval_dataset.update_current_timestamp(timestamp)
             test_ood_dataloader = FastDataLoader(dataset=self.eval_dataset,
-                                                 batch_size=self.mini_batch_size,
+                                                 batch_size=self.eval_batch_size,
                                                  num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
             metric = round(self.network_evaluation(test_ood_dataloader), 2)
             print(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {metric}')
@@ -339,6 +341,9 @@ class BaseTrainer:
         torch.save(self.network.state_dict(), path)
         print(f'Saving model at timestamp {timestamp} to path {path}...\n')
 
-    def load_model(self, timestamp):
-        path = self.get_model_path(timestamp)
+    def load_model(self, timestamp, checkpoint_path=None):
+        if self.checkpoint_path:
+            path = self.checkpoint_path
+        else:
+            path = self.get_model_path(timestamp)
         self.network.load_state_dict(torch.load(path), strict=False)

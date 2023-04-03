@@ -14,7 +14,11 @@ class FMoWNetwork(nn.Module):
         self.args = args
         self.num_classes = NUM_CLASSES
         self.enc = densenet121(pretrained=True).features
-        self.classifier = nn.Linear(1024, self.num_classes)
+        self.classifier = nn.Sequential(
+            nn.Linear(1024, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, self.num_classes)
+        )
         if weights is not None:
             self.load_state_dict(deepcopy(weights))
         # SimCLR projection head
@@ -26,12 +30,25 @@ class FMoWNetwork(nn.Module):
             from lightly.models.modules import SwaVProjectionHead, SwaVPrototypes
             self.projection_head = SwaVProjectionHead(1024, 1024, 128)
             self.prototypes = SwaVPrototypes(128, n_prototypes=1024)
-        elif True:
-            self.time_conditioned_classifier = nn.Linear(1024 + 1, self.num_classes)
+        elif self.args.time_conditioned:
+            self.classifier = nn.Sequential(
+                nn.Linear(1025, 1024),
+                nn.ReLU(),
+                nn.Linear(1024, self.num_classes)
+            )
         self.ssl_training = ssl_training
+
+    def freeze_classifier(self):
+        for param in self.enc.parameters():
+            param.requires_grad = False
+
+    def unfreeze_classifier(self):
+        for param in self.enc.parameters():
+            param.requires_grad = True
 
     def reset_weights(self, weights):
         self.load_state_dict(deepcopy(weights))
+
 
     def forward(self, x):
         if isinstance(x, list):
@@ -48,8 +65,8 @@ class FMoWNetwork(nn.Module):
             out = nn.functional.normalize(out, dim=1, p=2)
             out = self.prototypes(out)
             return out
-        elif True:
-            out = self.time_conditioned_classifier(
+        elif self.args.time_conditioned:
+            out = self.classifier(
                 torch.cat([out, torch.unsqueeze(timestamp, dim=1)], dim=1))
             return out
         else:

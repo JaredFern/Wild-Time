@@ -1,4 +1,5 @@
 import os
+from tqdm import tqdm
 
 from ..dataloaders import InfiniteDataLoader
 from lightly.loss import NTXentLoss
@@ -43,12 +44,15 @@ class SimCLR(BaseTrainer):
                                                  num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
         self.network.train()
         loss_all = []
-
+        progress_bar = tqdm(total=self.ssl_finetune_iter, position=1)
         for step, (x, y) in enumerate(finetune_dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
             loss, logits, y = forward_pass(x, y, self.train_dataset, self.network, self.criterion, self.lisa, self.mixup,
                                            self.cut_mix, self.mix_alpha)
             loss_all.append(loss.item())
+
+            if step % 200 == 0:
+                print(f'Finetune classifier: step {step}, loss {loss.item()}')
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -58,10 +62,12 @@ class SimCLR(BaseTrainer):
                 if self.scheduler is not None:
                     self.scheduler.step()
                 break
+            progress_bar.update(1)
 
     def train_step(self, dataloader):
         self.network.train()
         loss_all = []
+        progress_bar = tqdm(total=self.train_update_iter, position=0)
         for step, (x, y, _) in enumerate(dataloader):
             (x0, x1), y = prepare_data(x, y, str(self.train_dataset))
 
@@ -74,8 +80,12 @@ class SimCLR(BaseTrainer):
             self.optimizer.step()
             self.optimizer.zero_grad()
 
+            if step % 200 == 0:
+                print(f'SimCLR: step {step}, loss {loss.item()}')
+
             if step == self.train_update_iter:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 self.finetune_classifier()
                 break
+            progress_bar.update(1)

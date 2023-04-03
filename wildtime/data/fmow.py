@@ -28,7 +28,7 @@ class FMoWBase(Dataset):
         self.datasets = pickle.load(open(os.path.join(args.data_dir, self.data_file), 'rb'))
         self.transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406],
+            transforms.Normalize([0.485, 0.456, 0.406], # ImageNet Normalization
                                  [0.229, 0.224, 0.225])
         ])
         dataset = get_dataset(dataset="fmow", root_dir=args.data_dir, download=True)

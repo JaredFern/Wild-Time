@@ -1,6 +1,10 @@
 
 config = {
-    'dataset': 'yearbook', # choices=['arxiv', 'drug', 'huffpost', 'mimic', 'fmow', 'yearbook']
+    
+    'num_workers': 8,
+    'torch_compile': True
+
+    'dataset': 'fmow', # choices=['arxiv', 'drug', 'huffpost', 'mimic', 'fmow', 'yearbook']
     'method': 'erm', # choices=['agem', 'coral', 'ensemble', 'ewc', 'ft', 'groupdro', 'irm', 'si', 'erm', 'simclr', 'swav', 'swa']
     'device': 0,  # 'gpu id'
     'random_seed': 1,  # 'random seed number'
@@ -10,7 +14,7 @@ config = {
     'lr': 0.01,  # 'the base learning rate of the generator'
     'momentum': 0.9,  # 'momentum'
     'weight_decay': 0.0,  # 'weight decay'
-    'mini_batch_size': 32,  # 'mini batch size for SGD'
+    'mini_batch_size': 64,  # 'mini batch size for SGD'
     'reduced_train_prop': None,  # 'proportion of samples allocated to train at each time step'
     'reduction': 'mean',
 
@@ -22,8 +26,8 @@ config = {
     'offline': False,  # help='evaluate offline at a single time step split'
     'difficulty': False,  # 'task difficulty'
     # todo: set value of split_time
-    'split_time': 0,  # 'timestep to split ID vs OOD' #
-    'eval_next_timesteps': 1,  # 'number of future timesteps to evaluate on'
+    'split_time': 13,  # 'timestep to split ID vs OOD' #
+    'eval_next_timesteps': 6,  # 'number of future timesteps to evaluate on'
     'eval_worst_time': False,  # 'evaluate worst timestep accuracy'
     'load_model': False,  # 'load trained model for evaluation only'
     'eval_metric': 'acc',  # choices=['acc', 'f1', 'rmse']
@@ -70,7 +74,7 @@ config = {
     'finetune_iter': 10,  # 'number of iterations for finetuning SimCLR classifier'
 
     # Logging, saving, and testing options
-    'data_dir': './WildTime/datasets',  # 'directory for datasets.'
+    'data_dir': '/scratch/jaredfer/wilds/data/',  # 'directory for datasets.'
     'log_dir': './checkpoints',  # 'directory for summaries and checkpoints.'
     'results_dir': './results',  # 'directory for summaries and checkpoints.'
     'num_workers': 0  # 'number of workers in data generator'

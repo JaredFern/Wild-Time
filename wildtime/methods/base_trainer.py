@@ -77,6 +77,10 @@ class BaseTrainer:
         loss_all = []
         progress_bar = tqdm(total=self.train_update_iter)
 
+        if self.args.linear_probe_iter:
+            print("==== Freezing Encoder for Linear Probing ====")
+            self.network.freeze_classifier()
+
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
 
@@ -87,7 +91,19 @@ class BaseTrainer:
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
+
+            if self.args.method in ['swa'] and \
+                    self.args.swa_steps is not None and step % self.args.swa_steps == 0:
+                print("==== Updating Weights of Averaged Model ====")
+                self.swa_model.update_parameters(self.network)
+
             progress_bar.update(1)
+
+            if step % 100 == 0:
+                print(f'Train Loss at step {step}: {loss.item()}')
+            if step == self.args.linear_probe_iter:
+                print("==== Unfreezing Encoder for full Finetuning ====")
+                self.network.unfreeze_classifier()
 
             if step == self.train_update_iter:
                 if self.scheduler is not None:
@@ -116,6 +132,12 @@ class BaseTrainer:
     def train_offline(self):
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
+
+        # if self.args.train_on_one_time_step:
+        #     self.train_dataset.update_current_timestamp(self.args.train_on_one_time_step)
+        #     self.train_step(timestamp)
+        #     return
+
         for i, timestamp in enumerate(self.train_dataset.ENV):
             if timestamp < self.split_time:
                 self.train_dataset.mode = 0
@@ -150,11 +172,16 @@ class BaseTrainer:
                 x, y = sample
             x, y = prepare_data(x, y, str(self.eval_dataset))
             with torch.no_grad():
-                logits = self.network(x)
+                if self.args.method in ['swa']:
+                    logits = self.swa_model(x)
+                else:
+                    logits = self.network(x)
+
                 if self.args.dataset in ['drug']:
                     pred = logits.reshape(-1, )
                 else:
                     pred = F.softmax(logits, dim=1).argmax(dim=1)
+
                 pred_all = list(pred_all) + pred.detach().cpu().numpy().tolist()
                 y_all = list(y_all) + y.cpu().numpy().tolist()
 

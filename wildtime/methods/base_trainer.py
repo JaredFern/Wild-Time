@@ -72,10 +72,12 @@ class BaseTrainer:
             base_trainer_str += f'-eval_stream'
         return base_trainer_str
 
-    def train_step(self, dataloader):
+    def train_step(self, dataloader, num_steps=None):
+        if num_steps == None:
+            num_steps = self.args.train_update_iter
         self.network.train()
         loss_all = []
-        progress_bar = tqdm(total=self.train_update_iter)
+        progress_bar = tqdm(total=num_steps)
 
         if self.args.linear_probe_iter:
             print("==== Freezing Encoder for Linear Probing ====")
@@ -85,35 +87,34 @@ class BaseTrainer:
             x, y = prepare_data(x, y, str(self.train_dataset))
 
             loss, logits, y = forward_pass(
-                x, y, self.train_dataset, self.network, 
+                x, y, self.train_dataset, self.network,
                 self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
             loss_all.append(loss.item())
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
 
+            if step > 0 and step == self.args.linear_probe_iter:
+                print("==== Unfreezing Encoder for full Finetuning ====")
+                self.network.unfreeze_classifier()
             if self.args.method in ['swa'] and \
                     self.args.swa_steps is not None and step % self.args.swa_steps == 0:
                 print("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
 
-            progress_bar.update(1)
-
-            if step % 100 == 0:
+            if step % 50 == 0:
                 print(f'Train Loss at step {step}: {loss.item()}')
-            if step == self.args.linear_probe_iter:
-                print("==== Unfreezing Encoder for full Finetuning ====")
-                self.network.unfreeze_classifier()
+                # print(f'LR: {self.swa_scheduler.get_lr()}')
 
-            if step == self.train_update_iter:
+            progress_bar.update(1)
+            if step == num_steps:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 break
 
     def train_online(self):
         for i, timestamp in enumerate(self.train_dataset.ENV[:-1]):
-            if self.args.eval_fix and timestamp == self.split_time:
-                break
+            print(f"Training at timestamp: {timestamp}")
             if self.args.load_model and self.model_path_exists(timestamp):
                 self.load_model(timestamp)
             else:
@@ -124,10 +125,12 @@ class BaseTrainer:
                     self.train_dataset.ssl_training = True
                 train_dataloader = InfiniteDataLoader(dataset=self.train_dataset, weights=None, batch_size=self.mini_batch_size,
                                                       num_workers=self.num_workers, collate_fn=self.train_collate_fn)
-                self.train_step(train_dataloader)
+                self.train_step(train_dataloader, self.args.online_steps)
                 self.save_model(timestamp)
                 if self.args.method in ['coral', 'groupdro', 'irm', 'erm']:
                     self.train_dataset.update_historical(i + 1, data_del=True)
+            if self.args.eval_fix and timestamp == self.split_time:
+                break
 
     def train_offline(self):
         if self.args.method in ['simclr', 'swav']:
@@ -137,7 +140,6 @@ class BaseTrainer:
         #     self.train_dataset.update_current_timestamp(self.args.train_on_one_time_step)
         #     self.train_step(timestamp)
         #     return
-
         for i, timestamp in enumerate(self.train_dataset.ENV):
             if timestamp < self.split_time:
                 self.train_dataset.mode = 0
@@ -157,7 +159,7 @@ class BaseTrainer:
                 if self.args.load_model:
                     self.load_model(timestamp)
                 else:
-                    self.train_step(train_id_dataloader)
+                    self.train_step(train_id_dataloader, self.args.offline_steps)
                     self.save_model(timestamp)
                 break
 
@@ -343,15 +345,33 @@ class BaseTrainer:
             self.train_online()
         self.evaluate_online()
 
+
+    def run_warmstart_finetune(self):
+        # Initialize with general supervised training
+        self.train_offline()
+
+       ## Reset to online dataset
+        from ..data.fmow import FMoW
+        self.train_dataset = FMoW(self.args)
+
+        # Continual train on each timestamp
+        self.train_online()
+        self.evaluate_offline()
+
+
     def run(self):
         torch.cuda.empty_cache()
         start_time = time.time()
+
         if self.args.difficulty:
             self.run_task_difficulty()
         elif self.args.eval_fix:
             self.run_eval_fix()
+        elif self.args.eval_warmstart_finetune:
+            self.run_warmstart_finetune()
         else:
             self.run_eval_stream()
+
         runtime = time.time() - start_time
         print(f'Runtime: {runtime:.2f}\n')
 

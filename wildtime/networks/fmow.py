@@ -14,11 +14,8 @@ class FMoWNetwork(nn.Module):
         self.args = args
         self.num_classes = NUM_CLASSES
         self.enc = densenet121(pretrained=True).features
-        self.classifier = nn.Sequential(
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
-            nn.Linear(1024, self.num_classes)
-        )
+        self.classifier = nn.Linear(1024, self.num_classes)
+
         if weights is not None:
             self.load_state_dict(deepcopy(weights))
         # SimCLR projection head
@@ -32,8 +29,6 @@ class FMoWNetwork(nn.Module):
             self.prototypes = SwaVPrototypes(128, n_prototypes=1024)
         elif self.args.time_conditioned:
             self.classifier = nn.Sequential(
-                nn.Linear(1025, 1024),
-                nn.ReLU(),
                 nn.Linear(1024, self.num_classes)
             )
         self.ssl_training = ssl_training

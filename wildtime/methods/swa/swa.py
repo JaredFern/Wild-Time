@@ -23,11 +23,11 @@ class SWA(BaseTrainer):
     def __init__(self, args, dataset, network, criterion, optimizer, scheduler):
         super().__init__(args, dataset, network, criterion, optimizer, scheduler)
         self.network = self.network
-        # self.scheduler = SWALR(self.optimizer, swa_lr=args.lr, anneal_epochs=1)
+        self.swa_scheduler = SWALR(self.optimizer, swa_lr=args.lr, anneal_epochs=1)
 
         if args.swa_ewa:
             ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: \
-                0.5 * averaged_model_parameter + 0.5 * model_parameter
+                (1 - args.swa_ewa_lambda) * averaged_model_parameter + args.swa_ewa_lambda * model_parameter
             self.swa_model = AveragedModel(self.network, avg_fn=ema_avg)
         else:
             self.swa_model = AveragedModel(self.network)
@@ -51,7 +51,7 @@ class SWA(BaseTrainer):
                 if self.args.load_model:
                     self.load_swa_model(t)
                 else:
-                    self.train_step(train_id_dataloader)
+                    self.train_step(train_id_dataloader, self.args.offline_steps)
                     self.save_swa_model(t)
                 break
 
@@ -70,8 +70,11 @@ class SWA(BaseTrainer):
 
     def train_online(self):
         for i, t in enumerate(self.train_dataset.ENV[:-1]):
-            if self.args.eval_fix and t == self.split_time:
-                break
+            print(f"Training at timestamp {t}")
+            print("==== Updating Weights of Averaged Model ====")
+            self.swa_model.update_parameters(self.network)
+            self.swa_scheduler.step()
+
             if self.args.load_model and self.model_path_exists(t):
                 self.load_model(t)
             else:
@@ -82,11 +85,16 @@ class SWA(BaseTrainer):
                     self.train_dataset.ssl_training = True
                 train_dataloader = InfiniteDataLoader(dataset=self.train_dataset, weights=None, batch_size=self.mini_batch_size,
                                                     num_workers=self.num_workers, collate_fn=self.train_collate_fn)
-                self.train_step(train_dataloader)
-                self.swa_model.update_parameters(self.network) 
+                self.train_step(train_dataloader, self.args.online_steps)
+
                 self.save_swa_model(t)
                 if self.args.method in ['coral', 'groupdro', 'irm', 'erm']:
                     self.train_dataset.update_historical(i + 1, data_del=True)
+
+            if self.args.eval_fix and t == self.split_time:
+                print("==== Updating Weights of Averaged Model ====")
+                self.swa_model.update_parameters(self.network)
+                break
 
     def get_swa_model_copy(self, timestamp):
         swa_model_path = self.get_model_path(timestamp) + "_swa_copy"

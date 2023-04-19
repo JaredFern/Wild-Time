@@ -137,7 +137,7 @@ class Transformer(nn.Module):
         self.transformer = nn.ModuleList([TransformerBlock(embedding_size, heads, dropout) for _ in range(layers)])
 
         # binary classifier
-        self.fc = nn.Linear(embedding_size, 2)
+        self.classifier = nn.Linear(embedding_size, 2)
         self.activation = nn.Sigmoid()
 
 
@@ -160,7 +160,7 @@ class Transformer(nn.Module):
             x = transformer(emb, mask)  # [# admissions, # batch_codes, embedding_size]
 
         cls_emb = x[:, 0, :]
-        logits = self.fc(cls_emb)
+        logits = self.classifier(cls_emb)
         # logits = logits.squeeze(-1)
         return logits
 
@@ -184,3 +184,7 @@ class Transformer(nn.Module):
 
         cls_embed = x[:, 0, :]  # get CLS embedding
         return cls_embed
+
+    def forward_features(self, x):
+        return self.get_cls_embed(self, x)
+

@@ -66,3 +66,10 @@ class FMoWNetwork(nn.Module):
             return out
         else:
             return self.classifier(out)
+
+    def forward_features(self, x):
+        out = self.enc(x)
+        out = F.relu(out, inplace=True)
+        out = F.adaptive_avg_pool2d(out, (1, 1))
+        out = torch.flatten(out, 1)
+        return out

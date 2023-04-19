@@ -35,9 +35,13 @@ class DistilBertFeaturizer(DistilBertModel):
 class ArticleNetwork(nn.Module):
     def __init__(self, num_classes):
         super(ArticleNetwork, self).__init__()
-        featurizer = DistilBertFeaturizer.from_pretrained("distilbert-base-uncased")
-        classifier = nn.Linear(featurizer.d_out, num_classes)
-        self.model = nn.Sequential(featurizer, classifier)
+        self.encoder = DistilBertFeaturizer.from_pretrained("distilbert-base-uncased")
+        self.classifier = nn.Linear(self.encoder.d_out, num_classes)
 
     def forward(self, x):
-        return self.model(x)
+        features = self.encoder(x)
+        logits = self.classifier(features)
+        return logits
+
+    def forward_features(self, x):
+        return self.encoder(x)

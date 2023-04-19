@@ -42,3 +42,6 @@ class YearbookNetwork(nn.Module):
             return self.prototypes(x)
         else:
             return self.classifier(x)
+
+    def forward_features(self, x):
+        return self.enc(x)

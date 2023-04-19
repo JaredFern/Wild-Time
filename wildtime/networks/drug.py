@@ -123,3 +123,21 @@ def DTI_Classifier(in_features, out_features, is_nonlinear=False):
             torch.nn.Linear(in_features // 4, out_features))
     else:
         return torch.nn.Linear(in_features, out_features)
+
+
+class DrugNetwork(nn.Module):
+    """ Drug Network """
+
+    def __init__(self, is_nonlinear=False):
+        super(DrugNetwork, self).__init__()
+        self.encoder = DTI_Encoder()
+        self.classifier = DTI_Classifier(in_features=self.encoder.n_outputs, out_features=1, is_nonlinear=is_nonlinear)
+
+
+    def forward(self, x):
+        features = self.encoder(x)
+        logits = self.classifier(features)
+        return logits
+
+    def forward_features(self, x):
+        return self.encoder(x)

@@ -69,12 +69,17 @@ class SWA(BaseTrainer):
         self.swa_model.load_state_dict(torch.load(swa_model_path), strict=False)
 
     def train_online(self):
-        for i, t in enumerate(self.train_dataset.ENV[:-1]):
-            print(f"Training at timestamp {t}")
-            print("==== Updating Weights of Averaged Model ====")
-            self.swa_model.update_parameters(self.network)
-            self.swa_scheduler.step()
+        print("==== Updating Weights of Averaged Model ====")
+        self.swa_model.update_parameters(self.network)
+        self.swa_scheduler.step()
 
+        if len(self.args.eval_fixed_timesteps):
+            train_timesteps = self.args.eval_fixed_timesteps
+        else:
+            train_timesteps = self.train_dataset.ENV[:-1]
+
+        for i, t in enumerate(train_timesteps):
+            print(f"Training at timestamp {t}")
             if self.args.load_model and self.model_path_exists(t):
                 self.load_model(t)
             else:
@@ -91,7 +96,7 @@ class SWA(BaseTrainer):
                 if self.args.method in ['coral', 'groupdro', 'irm', 'erm']:
                     self.train_dataset.update_historical(i + 1, data_del=True)
 
-            if self.args.eval_fix and t == self.split_time:
+            if (self.args.eval_fix or self.args.eval_warmstart_finetune) and t == self.split_time:
                 print("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
                 break

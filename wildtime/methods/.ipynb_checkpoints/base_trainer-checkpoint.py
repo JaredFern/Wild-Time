@@ -83,6 +83,7 @@ class BaseTrainer:
             print("==== Freezing Encoder for Linear Probing ====")
             self.network.freeze_classifier()
 
+        import ipdb; ipdb.set_trace()
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
 
@@ -282,6 +283,7 @@ class BaseTrainer:
         features_all = torch.cat(list(features_by_time.values()), dim=0)
         U_all, S_all, V_all = torch.pca_lowrank(features_all, q=self.args.feat_num_components)
         projections_all = features_all @ V_all
+        import ipdb; ipdb.set_trace()
 
     def evaluate_online(self):
         print(f'\n=================================== Results (Eval-Stream) ===================================')
@@ -318,6 +320,7 @@ class BaseTrainer:
                 test_ood_dataloader = FastDataLoader(dataset=self.eval_dataset,
                                                      batch_size=self.eval_batch_size,
                                                      num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+                import ipdb; ipdb.set_trace()
                 acc = self.network_evaluation(test_ood_dataloader)
                 print(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
                 metrics.append(acc)

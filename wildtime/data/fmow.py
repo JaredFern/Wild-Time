@@ -155,7 +155,7 @@ class FMoW(FMoWBase):
             tensor_to_PIL = transforms.ToPILImage()
             image_tensor = tensor_to_PIL(image_tensor)
             return image_tensor, label_tensor, ''
-        return (image_tensor, timestamp_tensor), label_tensor
+        return image_tensor, label_tensor
 
     def __len__(self):
         return len(self.datasets[self.current_time][self.mode]['labels'])

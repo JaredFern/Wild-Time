@@ -33,11 +33,14 @@ class EWC(BaseTrainer):
     def __init__(self, args, dataset, network, criterion, optimizer, scheduler):
         super().__init__(args, dataset, network, criterion, optimizer, scheduler)
         self.ewc_lambda = args.ewc_lambda   #-> hyperparam: how strong to weigh EWC-loss ("regularization strength")
+        self.EWC_task_count = 0             #-> keeps track of number of quadratic loss terms (for "offline EWC")
+        self.results_file = os.path.join(args.results_dir, f'{str(dataset)}-{str(self)}.pkl')
         self.gamma = args.gamma             #-> hyperparam (online EWC): decay-term for old tasks' contribution to quadratic term
         self.online = args.online           #-> "online" (=single quadratic term) or "offline" (=quadratic term per task) EWC
         self.fisher_n = args.fisher_n       #-> sample size for estimating FI-matrix (if "None", full pass over dataset)
         self.emp_FI = args.emp_FI           #-> if True, use provided labels to calculate FI ("empirical FI"); else predicted labels
         self.EWC_task_count = 0             #-> keeps track of number of quadratic loss terms (for "offline EWC")
+        self.ewc_task_decay = 0
         self.results_file = os.path.join(args.results_dir, f'{str(dataset)}-{str(self)}.pkl')
 
     def __str__(self):
@@ -124,6 +127,9 @@ class EWC(BaseTrainer):
                         mean = getattr(self.network, '{}_EWC_prev_task{}'.format(n, "" if self.online else task))
                         fisher = getattr(self.network, '{}_EWC_estimated_fisher{}'.format(n, "" if self.online else task))
                         fisher = self.gamma * fisher if self.online else fisher
+                        
+                        decay_weight = self.ewc_task_decay ** (- self.EWC_task_count + task)
+
                         losses.append((fisher * (p - mean) ** 2).sum())
             return (1. / 2) * sum(losses)
         else:

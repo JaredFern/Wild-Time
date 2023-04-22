@@ -5,6 +5,7 @@ from torch.autograd import Variable
 from .lisa import lisa
 from .mixup import mixup_data, mixup_criterion
 
+group_datasets = ['coral', 'groupdro', 'irm']
 
 def prepare_data(x, y, dataset_name: str):
     if dataset_name == 'drug':
@@ -26,6 +27,51 @@ def prepare_data(x, y, dataset_name: str):
             y = y.squeeze(1).cuda()
     return x, y
 
+
+def reinit_dataset(args):
+    if args.dataset in ['huffpost']:
+        if args.method in group_datasets:
+            from ..data.huffpost import HuffPostGroup
+            dataset = HuffPostGroup(args)
+        else:
+            from ..data.huffpost import HuffPost
+            dataset = HuffPost(args)
+    elif args.dataset in ['yearbook']:
+        if args.method in group_datasets:
+            from ..data.yearbook import YearbookGroup
+            dataset = YearbookGroup(args)
+        else:
+            from ..data.yearbook import Yearbook
+            dataset = Yearbook(args)
+    elif args.dataset in ['fmow']:
+        if args.method in group_datasets:
+            from ..data.fmow import FMoWGroup
+            dataset = FMoWGroup(args)
+        else:
+            from ..data.fmow import FMoW
+            dataset = FMoW(args)
+    elif args.dataset in ['drug']:
+        if args.method in group_datasets:
+            from ..data.drug import TdcDtiDgGroup
+            dataset = TdcDtiDgGroup(args)
+        else:
+            from ..data.drug import TdcDtiDg
+            dataset = TdcDtiDg(args)
+    elif args.dataset in ['mimic']:
+        if args.method in group_datasets:
+            from ..data.mimic import MIMICGroup
+            dataset = MIMICGroup(args)
+        else:
+            from ..data.mimic import MIMIC
+            dataset = MIMIC(args)
+    elif args.dataset in ['arxiv']:
+        if args.method in group_datasets:
+            from ..data.arxiv import ArXivGroup
+            dataset = ArXivGroup(args)
+        else:
+            from ..data.arxiv import ArXiv
+            dataset = ArXiv(args)
+    return dataset
 
 def forward_pass(x, y, dataset, network, criterion, use_lisa: bool, use_mixup: bool, cut_mix: bool, mix_alpha=2.0):
     if use_lisa:

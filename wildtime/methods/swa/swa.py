@@ -1,4 +1,5 @@
 import copy
+import logging
 import os
 
 import torch
@@ -7,6 +8,7 @@ from ..base_trainer import BaseTrainer
 # from torchcontrib.optim import SWA as SWA_optimizer
 from torch.optim.swa_utils import AveragedModel, SWALR
 
+logger = logging.getLogger(__name__)
 
 class SWA(BaseTrainer):
     """
@@ -52,24 +54,24 @@ class SWA(BaseTrainer):
                     self.load_swa_model(t)
                 else:
                     self.train_step(train_id_dataloader, self.args.offline_steps)
-                    self.save_swa_model(t)
+                    self.save_swa_model("offline")
                 break
 
     def save_swa_model(self, timestamp):
         backup_state_dict = self.swa_model.state_dict()
 
         # self.optimizer.swap_swa_sgd()
-        swa_model_path = self.get_model_path(timestamp) + "_swa"
+        swa_model_path = self.get_model_path(timestamp)
         torch.save(self.swa_model.state_dict(), swa_model_path)
 
         self.swa_model.load_state_dict(backup_state_dict)
 
     def load_swa_model(self, timestamp):
-        swa_model_path = self.get_model_path(timestamp) + "_swa"
+        swa_model_path = self.get_model_path(timestamp)
         self.swa_model.load_state_dict(torch.load(swa_model_path), strict=False)
 
     def train_online(self):
-        print("==== Updating Weights of Averaged Model ====")
+        logger.info("==== Updating Weights of Averaged Model ====")
         self.swa_model.update_parameters(self.network)
         self.swa_scheduler.step()
 
@@ -79,7 +81,7 @@ class SWA(BaseTrainer):
             train_timesteps = self.train_dataset.ENV[:-1]
 
         for i, t in enumerate(train_timesteps):
-            print(f"Training at timestamp {t}")
+            logger.info(f"Training at timestamp {t}")
             if self.args.load_model and self.model_path_exists(t):
                 self.load_model(t)
             else:
@@ -97,7 +99,7 @@ class SWA(BaseTrainer):
                     self.train_dataset.update_historical(i + 1, data_del=True)
 
             if (self.args.eval_fix or self.args.eval_warmstart_finetune) and t == self.split_time:
-                print("==== Updating Weights of Averaged Model ====")
+                logger.info("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
                 break
 

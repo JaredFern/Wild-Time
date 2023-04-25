@@ -1,8 +1,10 @@
+import logging
 import os
 import torch
 from ..dataloaders import InfiniteDataLoader
 from ..base_trainer import BaseTrainer
 
+logger = logging.getLogger(__name__)
 
 class TemporalEnsemble(BaseTrainer):
     def __init__(self, args, dataset, network, criterion, optimizer, scheduler):
@@ -12,7 +14,7 @@ class TemporalEnsemble(BaseTrainer):
 
     def train_online(self):
         for i, t in enumerate(self.train_dataset.ENV[:-1]):
-            print(f"Training at timestamp {t}")
+            logger.info(f"Training at timestamp {t}")
             model_copy = self.network.detach().clone()
 
             if self.args.lisa and i == self.args.lisa_start_time:

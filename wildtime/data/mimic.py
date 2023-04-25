@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 import random
@@ -9,6 +10,8 @@ from torch.utils.data import Dataset
 
 
 ID_HELD_OUT = 0.2
+
+logger = logging.getLogger(__name__)
 
 """
 Reference: https://github.com/Google-Health/records-research/tree/master/graph-convolutional-transformer
@@ -49,13 +52,13 @@ def diag_icd9_to_3digit(icd9):
         if len(icd9) >= 4:
             return icd9[:4]
         else:
-            print(icd9)
+            logger.info(icd9)
             return icd9
     else:
         if len(icd9) >= 3:
             return icd9[:3]
         else:
-            print(icd9)
+            logger.info(icd9)
             return icd9
 
 
@@ -63,7 +66,7 @@ def diag_icd10_to_3digit(icd10):
     if len(icd10) >= 3:
         return icd10[:3]
     else:
-        print(icd10)
+        logger.info(icd10)
         return icd10
 
 
@@ -84,7 +87,7 @@ def proc_icd9_to_3digit(icd9):
     if len(icd9) >= 3:
         return icd9[:3]
     else:
-        print(icd9)
+        logger.info(icd9)
         return icd9
 
 
@@ -92,7 +95,7 @@ def proc_icd10_to_3digit(icd10):
     if len(icd10) >= 3:
         return icd10[:3]
     else:
-        print(icd10)
+        logger.info(icd10)
         return icd10
 
 
@@ -215,7 +218,7 @@ def get_stay_dict(save_dir):
     pickle.dump(mimic_dict, open(os.path.join(save_dir, 'mimic_stay_dict.pkl'), 'wb'))
 
 def preprocess_reduced_train_set(args):
-    print(f'Preprocessing reduced train proportion dataset and saving to mimic_{args.prediction_type}_wildtime_{args.reduced_train_prop}.pkl')
+    logger.info(f'Preprocessing reduced train proportion dataset and saving to mimic_{args.prediction_type}_wildtime_{args.reduced_train_prop}.pkl')
     np.random.seed(0)
 
     orig_data_file = os.path.join(args.data_dir, f'mimic_{args.prediction_type}_wildtime.pkl')
@@ -344,7 +347,7 @@ class MIMICBase(Dataset):
             for classid in range(self.num_classes):
                 sel_idx = np.nonzero(self.datasets[i][self.mode]['labels'].astype(np.int64) == classid)[0]
                 self.class_id_list[classid][i] = sel_idx
-            print(f'Year {str(i)} loaded')
+            logger.info(f'Year {str(i)} loaded')
 
             cumulative_batch_size += min(self.mini_batch_size, self.num_examples[i])
             if args.method in ['erm']:

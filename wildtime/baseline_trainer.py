@@ -1,7 +1,12 @@
+import json
+import logging
+import os
+import random
+import sys
 import numpy as np
 import torch
 import torch.nn as nn
-import random
+from datetime import date
 from functools import partial
 
 # from .analysis.loss_landscape import calculate_loss_contours
@@ -29,13 +34,60 @@ group_datasets = ['coral', 'groupdro', 'irm']
 print = partial(print, flush=True)
 
 
+def _init_logger(args):
+    if not os.path.exists(args.log_dir):
+        os.makedirs(args.log_dir)
+
+    # Experiment Name: Date_Dataset_Method_Setting/
+    if args.eval_fix:
+        eval_setting = "eval_fix"
+    elif args.eval_warmstart_finetune:
+        eval_setting = "eval_warmstart_finetune"
+    elif args.eval_fixed_timesteps:
+        eval_setting = "eval_fixed_timesteps"
+    else:
+        eval_setting = 'eval_stream'
+    exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{eval_setting}"
+
+    # Create logging directories
+    exp_path = os.path.join(args.log_dir, exp_name)
+    if not os.path.exists(exp_path):
+        os.makedirs(exp_path)
+    else:
+        i = 1
+        while True:
+            new_exp_path = f"{exp_path}_{i}"
+            if not os.path.exists(new_exp_path):
+                os.makedirs(new_exp_path)
+                exp_path = new_exp_path
+                break
+            i += 1
+    args.exp_name = exp_name
+
+    # Create stdout logger
+    logging.basicConfig(
+        level=logging.INFO,
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(f'{exp_path}/log.out', 'a')],
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    args.model_path = f"{exp_path}/checkpoints"
+    os.makedirs(args.model_path)
+
+    # Save Config as json file
+    json_str = json.dumps(vars(args))
+    with open(f"{exp_path}/config.json", "w") as file_handler:
+        file_handler.write(json_str)
+
+
 def _init_optimizer(args, network):
     # TODO: Add optimizer to config files
     # Base Optimizer
     if args.optimizer == "adam":
         optimizer = torch.optim.Adam(network.parameters(), lr=args.lr, weight_decay=args.weight_decay, amsgrad=args.amsgrad)
     elif args.optimizer == "adamw":
-        optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr, weight_decay=args.weight_decay) 
+        optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         optimizer = torch.optim.SGD(network.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     # Sharpness Aware Minimization
@@ -164,6 +216,7 @@ def init(args):
     return trainer
 
 def train(args):
+    _init_logger(args)
     trainer = init(args)
     trainer.run()
 
@@ -171,7 +224,7 @@ def train(args):
 #     dataset, criterion, network, _, _ = trainer_init(args)
 #     # TODO: Dataset --> List of Single Timeset Dataloaders
 #     # TODO: Dataset --> All Dataloaders
-    
+
 #     model_checkpoints = args.loss_landscape_models
 
 #     model1 = network

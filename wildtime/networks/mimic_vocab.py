@@ -1,6 +1,8 @@
+import logging
 import os
 import pickle
 
+logger = logging.getLogger(__name__)
 
 class Vocabulary(object):
 
@@ -29,7 +31,7 @@ def vocab_construction(all_words, output_filename):
     vocab = Vocabulary()
     for word in all_words:
         vocab.add_word(word)
-    print(f"Vocab len:", len(vocab))
+    logger.info(f"Vocab len:", len(vocab))
 
     # sanity check
     assert set(vocab.word2idx.keys()) == set(vocab.idx2word.values())

@@ -25,8 +25,6 @@ device = 'cuda' if cuda.is_available() else 'cpu'
 
 if __name__ == '__main__':
     configs = argparse.Namespace(**config)
-    print(configs)
-
     random.seed(configs.random_seed)
     np.random.seed(configs.random_seed)
     torch.cuda.manual_seed(configs.random_seed)

@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 from copy import deepcopy
@@ -12,6 +13,8 @@ from torch.utils import data
 from .utils import download_detection
 
 ID_HELD_OUT = 0.1
+
+logger = logging.getLogger(__name__)
 
 class TdcDtiDgBase(data.Dataset):
     def __init__(self, args):
@@ -207,7 +210,7 @@ def trans_drug(x):
 
 
 def preprocess_reduced_train_set(args):
-    print(f'Preprocessing reduced train proportion dataset and saving to drug_preprocessed_{args.reduced_train_prop}.pkl')
+    logger.info(f'Preprocessing reduced train proportion dataset and saving to drug_preprocessed_{args.reduced_train_prop}.pkl')
 
     orig_data_file = os.path.join(args.data_dir, f'drug_preprocessed.pkl')
     dataset = pickle.load(open(orig_data_file, 'rb'))

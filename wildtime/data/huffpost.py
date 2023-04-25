@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 import numpy as np
@@ -10,6 +11,8 @@ PREPROCESSED_FILE = 'huffpost.pkl'
 MAX_TOKEN_LENGTH = 300
 RAW_DATA_FILE = 'News_Category_Dataset_v2.json'
 ID_HELD_OUT = 0.1
+
+logger = logging.getLogger(__name__)
 
 class HuffPostBase(Dataset):
     def __init__(self, args):
@@ -49,7 +52,7 @@ class HuffPostBase(Dataset):
             for classid in range(self.num_classes):
                 sel_idx = np.nonzero(np.array(self.datasets[year][self.mode]['category']) == classid)[0]
                 self.class_id_list[classid][year] = sel_idx
-            print(f'Year {str(year)} loaded')
+            logger.info(f'Year {str(year)} loaded')
 
             # Store input dim
             num_examples = len(self.datasets[year][self.mode]['category'])
@@ -62,7 +65,7 @@ class HuffPostBase(Dataset):
         # total_samples = 0
         # for i in self.ENV:
         #     total_samples += len(self.datasets[i][2]['category'])
-        # print('total', total_samples)
+        # logger.info('total', total_samples)
 
     def update_historical(self, idx, data_del=False):
         time = self.ENV[idx]
@@ -212,13 +215,13 @@ class HuffPostGroup(HuffPostBase):
 
 """
 News Categories to IDs:
-    {'BLACK VOICES': 0, 'BUSINESS': 1, 'COMEDY': 2, 'CRIME': 3, 
-    'ENTERTAINMENT': 4, 'IMPACT': 5, 'QUEER VOICES': 6, 'SCIENCE': 7, 
+    {'BLACK VOICES': 0, 'BUSINESS': 1, 'COMEDY': 2, 'CRIME': 3,
+    'ENTERTAINMENT': 4, 'IMPACT': 5, 'QUEER VOICES': 6, 'SCIENCE': 7,
     'SPORTS': 8, 'TECH': 9, 'TRAVEL': 10}
 """
 
 def preprocess_reduced_train_set(args):
-    print(f'Preprocessing reduced train proportion dataset and saving to huffpost_{args.reduced_train_prop}.pkl')
+    logger.info(f'Preprocessing reduced train proportion dataset and saving to huffpost_{args.reduced_train_prop}.pkl')
     np.random.seed(0)
 
     orig_data_file = os.path.join(args.data_dir, f'huffpost.pkl')

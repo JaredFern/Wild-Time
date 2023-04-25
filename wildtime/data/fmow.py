@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 from collections import defaultdict
@@ -12,6 +13,8 @@ from wilds import get_dataset
 from .utils import download_detection
 
 ID_HELD_OUT = 0.1
+
+logger = logging.getLogger(__name__)
 
 class FMoWBase(Dataset):
     def __init__(self, args):
@@ -216,7 +219,7 @@ class FMoWGroup(FMoWBase):
 
 
 def preprocess_reduced_train_set(args):
-    print(f'Preprocessing reduced train proportion dataset and saving to fmow_{args.reduced_train_prop}.pkl')
+    logger.info(f'Preprocessing reduced train proportion dataset and saving to fmow_{args.reduced_train_prop}.pkl')
     np.random.seed(0)
 
     orig_data_file = os.path.join(args.data_dir, f'fmow.pkl')

@@ -1,3 +1,4 @@
+import logging
 import math
 
 import torch
@@ -5,6 +6,7 @@ import torch.nn as nn
 
 from .mimic_tokenizer import MIMICTokenizer
 
+logger = logging.getLogger(__name__)
 
 class Attention(nn.Module):
     def forward(self, query, key, value, mask, dropout=None):
@@ -104,7 +106,7 @@ class TransformerBlock(nn.Module):
         self.input_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.output_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.dropout = nn.Dropout(p=dropout)
-        print(f"TransformerBlock added with hid-{hidden}, head-{attn_heads}, in_hid-{2 * hidden}, drop-{dropout}")
+        logger.info(f"TransformerBlock added with hid-{hidden}, head-{attn_heads}, in_hid-{2 * hidden}, drop-{dropout}")
 
     def forward(self, x, mask):
         """

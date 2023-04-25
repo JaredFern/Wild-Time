@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 from collections import defaultdict
@@ -13,8 +14,10 @@ RAW_DATA_FOLDER = 'faces_aligned_small_mirrored_co_aligned_cropped_cleaned'
 RESOLUTION = 32
 ID_HELD_OUT = 0.1
 
+logger = logging.getLogger(__name__)
+
 def preprocess_reduced_train_set(args):
-    print(f'Preprocessing reduced train proportion dataset and saving to yearbook_{args.reduced_train_prop}.pkl')
+    logger.info(f'Preprocessing reduced train proportion dataset and saving to yearbook_{args.reduced_train_prop}.pkl')
     np.random.seed(0)
 
     orig_data_file = os.path.join(args.data_dir, f'yearbook.pkl')
@@ -42,7 +45,7 @@ def preprocess_reduced_train_set(args):
 
 
 def preprocess_orig(args):
-    print(f'Preprocessing dataset and saving to yearbook.pkl')
+    logger.info(f'Preprocessing dataset and saving to yearbook.pkl')
     np.random.seed(0)
     raw_data_path = os.path.join(args.data_dir, RAW_DATA_FOLDER)
     if not os.path.exists(raw_data_path):
@@ -50,9 +53,9 @@ def preprocess_orig(args):
 
     path = os.path.join(args.data_dir, RAW_DATA_FOLDER)
     dir_M = os.listdir(f'{path}/M')
-    print('num male photos', len(dir_M))
+    logger.info('num male photos', len(dir_M))
     dir_F = os.listdir(f'{path}/F')
-    print('num female photos', len(dir_F))
+    logger.info('num female photos', len(dir_F))
 
     images = defaultdict(list)
     labels = defaultdict(list)

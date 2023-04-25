@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 
@@ -11,6 +12,8 @@ from .utils import initialize_distilbert_transform, download_detection
 MAX_TOKEN_LENGTH = 300
 RAW_DATA_FILE = 'arxiv-metadata-oai-snapshot.json'
 ID_HELD_OUT = 0.1
+
+logger = logging.getLogger(__name__)
 
 class ArXivBase(Dataset):
     def __init__(self, args):
@@ -48,7 +51,7 @@ class ArXivBase(Dataset):
             for classid in range(self.num_classes):
                 sel_idx = np.nonzero(np.array(self.datasets[year][self.mode]['category']) == classid)[0]
                 self.class_id_list[classid][year] = sel_idx
-            print(f'Year {str(year)} loaded')
+            logger.info(f'Year {str(year)} loaded')
 
             # Store input dim
             num_examples = len(self.datasets[year][self.mode]['category'])
@@ -206,7 +209,7 @@ class ArXivGroup(ArXivBase):
 
 
 def preprocess_reduced_train_set(args):
-    print(f'Preprocessing reduced train dataset and saving to arxiv_{args.reduced_train_prop}.pkl')
+    logger.info(f'Preprocessing reduced train dataset and saving to arxiv_{args.reduced_train_prop}.pkl')
     np.random.seed(0)
 
     orig_data_file = os.path.join(args.data_dir, f'arxiv.pkl')

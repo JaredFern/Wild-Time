@@ -1,3 +1,4 @@
+import logging
 import os
 from tqdm import tqdm
 
@@ -6,6 +7,7 @@ from lightly.loss import NTXentLoss
 from ..base_trainer import BaseTrainer
 from ..utils import prepare_data, forward_pass
 
+logger = logging.getLogger(__name__)
 
 class SimCLR(BaseTrainer):
     """
@@ -52,7 +54,7 @@ class SimCLR(BaseTrainer):
             loss_all.append(loss.item())
 
             if step % 200 == 0:
-                print(f'Finetune classifier: step {step}, loss {loss.item()}')
+                logger.info(f'Finetune classifier: step {step}, loss {loss.item()}')
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -81,7 +83,7 @@ class SimCLR(BaseTrainer):
             self.optimizer.zero_grad()
 
             if step % 200 == 0:
-                print(f'SimCLR: step {step}, loss {loss.item()}')
+                logger.info(f'SimCLR: step {step}, loss {loss.item()}')
 
             if step == self.train_update_iter:
                 if self.scheduler is not None:

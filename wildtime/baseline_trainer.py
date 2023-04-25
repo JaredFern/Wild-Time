@@ -34,7 +34,7 @@ group_datasets = ['coral', 'groupdro', 'irm']
 print = partial(print, flush=True)
 
 
-def _init_logger(args):
+def logger_init(args):
     if not os.path.exists(args.log_dir):
         os.makedirs(args.log_dir)
 
@@ -209,15 +209,19 @@ def init(args):
     dataset, criterion, network, optimizer, scheduler = trainer_init(args)
     if args.torch_compile:
         network = torch.compile(network)
-    method_dict = {'groupdro': 'GroupDRO', 'coral': 'DeepCORAL', 'irm': 'IRM', 'ft': 'FT', 'erm': 'ERM', 'ewc': 'EWC',
-                  'agem': 'AGEM', 'si': 'SI', 'simclr': 'SimCLR', 'swav': 'SwaV', 'swa': 'SWA'}
+    method_dict = {
+        'groupdro': 'GroupDRO', 'coral': 'DeepCORAL', 'irm': 'IRM', 'ft': 'FT',
+        'erm': 'ERM', 'ewc': 'EWC', 'agem': 'AGEM', 'si': 'SI', 'simclr': 'SimCLR',
+        'swav': 'SwaV', 'swa': 'SWA'
+    }
 
     trainer = globals()[method_dict[args.method]](args, dataset, network, criterion, optimizer, scheduler)
     return trainer
 
 def train(args):
-    _init_logger(args)
+    logger_init(args)
     trainer = init(args)
+    import ipdb; ipdb.set_trace()
     trainer.run()
 
 # def analyze_loss_landscape(args):

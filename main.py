@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from torch import cuda
 
-from wildtime.baseline_trainer import trainer_init
+from wildtime.baseline_trainer import logger_init, trainer_init
 from wildtime.configs.eval_fix import configs_yearbook, configs_huffpost, configs_fmow, configs_arxiv, configs_mimic_mortality, configs_mimic_readmission
 from wildtime.methods.agem.agem import AGEM
 from wildtime.methods.coral.coral import DeepCORAL
@@ -124,6 +124,7 @@ if __name__ == '__main__':
     else:
         raise ValueError
 
+    logger_init(configs)
     trainer.run()
 
     # todo: When using a dictionary to store classes, each class will be instantiated and there will be incompatible datasets and methods

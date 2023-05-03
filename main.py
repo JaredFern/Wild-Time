@@ -210,12 +210,14 @@ if __name__ == '__main__':
     else:
         raise ValueError
 
-    logger_init(configs, args.train)
-    if args.train:
+    logger_init(configs, configs.train)
+    logging.info(configs)
+
+    if configs.train:
         trainer.run()
-    if args.eval:
+    if configs.eval:
         trainer.eval()
-    if args.loss_contours:
+    if configs.loss_contours:
         contour_data = loss_landscape.generate_loss_contours(configs, trainer)
         contour_dir = os.path.join(configs.exp_path, 'loss_contours')
         if 'model_ids' in contour_data.keys():

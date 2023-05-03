@@ -61,9 +61,8 @@ class SWA(BaseTrainer):
         backup_state_dict = self.swa_model.state_dict()
 
         # self.optimizer.swap_swa_sgd()
-        swa_model_path = self.get_model_path(timestamp)
+        swa_model_path = self.get_model_path(str(timestamp) + "_swa")
         torch.save(self.swa_model.state_dict(), swa_model_path)
-
         self.swa_model.load_state_dict(backup_state_dict)
 
     def load_swa_model(self, timestamp):
@@ -71,8 +70,6 @@ class SWA(BaseTrainer):
         self.swa_model.load_state_dict(torch.load(swa_model_path), strict=False)
 
     def train_online(self):
-        logger.info("==== Updating Weights of Averaged Model ====")
-        self.swa_model.update_parameters(self.network)
         self.swa_scheduler.step()
 
         if len(self.args.eval_fixed_timesteps):
@@ -93,15 +90,18 @@ class SWA(BaseTrainer):
                 train_dataloader = InfiniteDataLoader(dataset=self.train_dataset, weights=None, batch_size=self.mini_batch_size,
                                                     num_workers=self.num_workers, collate_fn=self.train_collate_fn)
                 self.train_step(train_dataloader, self.args.online_steps)
-
+                logger.info("==== Updating Weights of Averaged Model ====")
+                self.swa_model.update_parameters(self.network)
+                self.save_model(t)
                 self.save_swa_model(t)
+                import ipdb; ipdb.set_trace()
+
                 if self.args.method in ['coral', 'groupdro', 'irm', 'erm']:
                     self.train_dataset.update_historical(i + 1, data_del=True)
 
             if (self.args.eval_fix or self.args.eval_warmstart_finetune) and t == self.split_time:
-                logger.info("==== Updating Weights of Averaged Model ====")
-                self.swa_model.update_parameters(self.network)
                 break
+
 
     def get_swa_model_copy(self, timestamp):
         swa_model_path = self.get_model_path(timestamp) + "_swa_copy"

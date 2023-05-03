@@ -193,3 +193,68 @@ def collate_fn_mimic(batch):
     else:
         groupid = torch.cat([item[2] for item in batch], dim=0).unsqueeze(1)
         return [(codes, types), target, groupid]
+
+def flatten_parameters(model):
+    """Returns a flattened tensor containing the parameters of model."""
+    return torch.cat([param.flatten() for param in model.module.parameters()])
+
+
+def assign_params(model, w):
+    """Takes in a flattened parameter vector w and assigns them to the parameters
+    of model.
+    """
+    offset = 0
+    for parameter in model.module.parameters():
+        param_size = parameter.nelement()
+        parameter.data = w[offset : offset + param_size].reshape(parameter.shape)
+        offset += param_size
+
+
+def flatten_gradients(model):
+    """Returns a flattened numpy array with the gradients of the parameters of
+    the model.
+    """
+    return np.concatenate(
+        [
+            param.grad.detach().cpu().numpy().flatten()
+            if param.grad is not None
+            else np.zeros(param.nelement())
+            for param in model.parameters()
+        ]
+    )
+
+def create_eval_fn(calculate_gradient=False):
+    def eval_fn(model, dataloader, device):
+        model.eval()
+        total_loss = 0
+        loss_fn = torch.nn.CrossEntropyLoss(reduction="sum").to(device=device)
+        num_correct = 0
+        num_items = 0
+        model.zero_grad()
+        torch.set_grad_enabled(calculate_gradient)
+        for idx, (X, y) in enumerate(iter(dataloader)):
+            X = X.to(device=device)
+            y = y.to(device=device).squeeze()
+            output = model(X)
+            preds = torch.argmax(output, dim=1)
+            num_correct += (preds == y).sum().item()
+            try:
+                num_items += y.shape[0]
+            except:
+                import ipdb; ipdb.set_trace()
+
+            loss = loss_fn(output, y)
+            if calculate_gradient:
+                loss.backward()
+            total_loss += loss.item()
+
+        accuracy = num_correct / num_items
+        avg_loss = total_loss / num_items
+        metrics = {"loss": avg_loss, "accuracy": accuracy}
+        if calculate_gradient:
+            gradients = flatten_gradients(model)
+            metrics["gradients"] = gradients
+
+        return metrics
+
+    return eval_fn

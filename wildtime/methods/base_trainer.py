@@ -444,6 +444,18 @@ class BaseTrainer:
         runtime = time.time() - start_time
         logger.info(f'Runtime: {runtime:.2f}\n')
 
+    def eval(self):
+        torch.cuda.empty_cache()
+        start_time = time.time()
+
+        if self.args.eval_fix:
+            self.evaluate_offline()
+        if self.args.eval_stream:
+            self.evaluate_online()
+        runtime = time.time() - start_time
+        logger.info(f'Runtime: {runtime:.2f}\n')
+
+
     def get_model_path(self, timestamp):
         model_str = f'time_{timestamp}.pth'
         path = os.path.join(self.args.model_path, model_str)
@@ -455,7 +467,7 @@ class BaseTrainer:
     def save_model(self, timestamp):
         path = self.get_model_path(timestamp)
         torch.save(self.network.state_dict(), path)
-        logger.info(f'Saving model at timestamp {timestamp} to path {path}...\n')
+        logger.info(f'Saving model at timestamp {timestamp} to path {path}.\n')
 
     def load_model(self, timestamp, checkpoint_path=None):
         if self.checkpoint_path:

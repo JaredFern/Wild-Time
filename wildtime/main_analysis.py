@@ -24,9 +24,9 @@ from .networks.fmow import FMoWNetwork
 from .networks.mimic import Transformer
 from .networks.yearbook import YearbookNetwork
 
-from .analysis.loss_landscape import calculate_loss_contours
+from .methods.loss_landscape import calculate_loss_contours
 from .analysis.sharpness import sharpness
-from .analysis.utils import flatten_gradients
+from .utils import flatten_gradients
 
 logging.basicConfig()
 logging.root.setLevel(logging.INFO)

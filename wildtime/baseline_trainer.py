@@ -15,7 +15,6 @@ from .networks.drug import DTI_Encoder, DTI_Classifier, DrugNetwork
 from .networks.fmow import FMoWNetwork
 from .networks.mimic import Transformer
 from .networks.yearbook import YearbookNetwork
-from .methods.dataloaders import FastDataLoader, InfiniteDataLoader
 from .methods.agem.agem import AGEM
 from .methods.coral.coral import DeepCORAL
 from .methods.erm.erm import ERM
@@ -33,53 +32,7 @@ scheduler = None
 group_datasets = ['coral', 'groupdro', 'irm']
 print = partial(print, flush=True)
 
-
-def logger_init(args):
-    if not os.path.exists(args.log_dir):
-        os.makedirs(args.log_dir)
-
-    # Experiment Name: Date_Dataset_Method_Setting/
-    if args.eval_fix:
-        eval_setting = "eval_fix"
-    elif args.eval_warmstart_finetune:
-        eval_setting = "eval_warmstart_finetune"
-    elif args.eval_fixed_timesteps:
-        eval_setting = "eval_fixed_timesteps"
-    else:
-        eval_setting = 'eval_stream'
-    exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{eval_setting}"
-
-    # Create logging directories
-    exp_path = os.path.join(args.log_dir, exp_name)
-    if not os.path.exists(exp_path):
-        os.makedirs(exp_path)
-    else:
-        i = 1
-        while True:
-            new_exp_path = f"{exp_path}_{i}"
-            if not os.path.exists(new_exp_path):
-                os.makedirs(new_exp_path)
-                exp_path = new_exp_path
-                break
-            i += 1
-    args.exp_name = exp_name
-
-    # Create stdout logger
-    logging.basicConfig(
-        level=logging.INFO,
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(f'{exp_path}/log.out', 'a')],
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    args.model_path = f"{exp_path}/checkpoints"
-    os.makedirs(args.model_path)
-
-    # Save Config as json file
-    json_str = json.dumps(vars(args))
-    with open(f"{exp_path}/config.json", "w") as file_handler:
-        file_handler.write(json_str)
-
+logger = logging.getLogger(__name__)
 
 def _init_optimizer(args, network):
     # TODO: Add optimizer to config files
@@ -221,7 +174,6 @@ def init(args):
 def train(args):
     logger_init(args)
     trainer = init(args)
-    import ipdb; ipdb.set_trace()
     trainer.run()
 
 # def analyze_loss_landscape(args):

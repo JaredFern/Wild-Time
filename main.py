@@ -108,7 +108,7 @@ if __name__ == '__main__':
     parser.add_argument('--ewc_task_decay', type=float, default=2.0)
 
     # Contour Parameters
-    parser.add_argument('--contour_timesteps', action='append')
+    parser.add_argument('--contour_timesteps', action='append', type=int)
     parser.add_argument('--contour_models', nargs=3)
     parser.add_argument('--contour_granularity', type=float, default=5)
     parser.add_argument('--contour_margin', type=float, default=0.1)
@@ -162,7 +162,6 @@ if __name__ == '__main__':
         'data_dir': '/projects/tir6/strubell/data/wilds/data',
         'log_dir': '/projects/tir6/strubell/jaredfer/projects/wild-time/results',
         'results_dir': '/projects/tir6/strubell/jaredfer/projects/wild-time/results',
-        'exp_name': '/projects/tir6/strubell/jaredfer/projects/wild-time/results/0426_fmow_swa_eval_warmstart_finetune_3_1'
     }
     configs = {
         **getattr(

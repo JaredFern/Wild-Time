@@ -41,7 +41,7 @@ def logger_init(args, train=False):
     else:
         eval_setting = 'eval_stream'
 
-    if not hasattr(args, 'exp_name'):
+    if not hasattr(args, 'exp_name') or args.exp_name is None:
         args.exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{eval_setting}"
 
     args.exp_path = os.path.join(args.log_dir, args.exp_name)

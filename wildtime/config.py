@@ -1,14 +1,13 @@
-
 config = {
     'dataset': 'yearbook', # choices=['arxiv', 'drug', 'huffpost', 'mimic', 'fmow', 'yearbook']
     'method': 'erm', # choices=['agem', 'coral', 'ensemble', 'ewc', 'ft', 'groupdro', 'irm', 'si', 'erm', 'simclr', 'swav', 'swa']
     'device': 0,  # 'gpu id'
-    'random_seed': 1,  # 'random seed number'
+    'random_seed': 1000,  # 'random seed number'
 
     # Training hyperparameters
     'train_update_iter': 3000,  # 'train update iter'
     'lr': 0.001,  # 'the base learning rate of the generator'
-    'momentum': 0.99,  # 'momentum'
+    'momentum': 0.9,  # 'momentum'
     'weight_decay': 0.0,  # 'weight decay'
     'mini_batch_size': 32,  # 'mini batch size for SGD'
     'reduced_train_prop': None,  # 'proportion of samples allocated to train at each time step'

@@ -34,20 +34,6 @@ print = partial(print, flush=True)
 
 logger = logging.getLogger(__name__)
 
-def _init_optimizer(args, network):
-    # TODO: Add optimizer to config files
-    # Base Optimizer
-    if args.optimizer == "adam":
-        optimizer = torch.optim.Adam(network.parameters(), lr=args.lr, weight_decay=args.weight_decay, amsgrad=args.amsgrad)
-    elif args.optimizer == "adamw":
-        optimizer = torch.optim.AdamW(network.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    else:
-        optimizer = torch.optim.SGD(network.parameters(), lr=args.lr, weight_decay=args.weight_decay)
-    # Sharpness Aware Minimization
-    if args.use_sam:
-        optimizer = SAM(network.parameters(), optimizer, rho=args.sam_rho, adaptive=args.sam_adaptive)
-
-    return optimizer
 
 def _yearbook_init(args):
     if args.method in group_datasets:
@@ -162,6 +148,8 @@ def init(args):
     dataset, criterion, network, optimizer, scheduler = trainer_init(args)
     if args.torch_compile:
         network = torch.compile(network)
+    if args.sam:
+        optimizer = SAM(network.parameters(), optimizer, rho=0.05, adaptive=False)
     method_dict = {
         'groupdro': 'GroupDRO', 'coral': 'DeepCORAL', 'irm': 'IRM', 'ft': 'FT',
         'erm': 'ERM', 'ewc': 'EWC', 'agem': 'AGEM', 'si': 'SI', 'simclr': 'SimCLR',

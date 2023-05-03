@@ -3,6 +3,7 @@ Based on https://github.com/davda54/sam
 '''
 
 import torch
+import torch.nn as nn
 
 
 class SAM(torch.optim.Optimizer):
@@ -66,18 +67,18 @@ class SAM(torch.optim.Optimizer):
         self.base_optimizer.param_groups = self.param_groups
 
 
-def disable_running_stats(model):
-    def _disable(module):
-        if isinstance(module, nn.BatchNorm2d):
-            module.backup_momentum = module.momentum
-            module.momentum = 0
+    def disable_running_stats(self, model):
+        def _disable(module):
+            if isinstance(module, nn.BatchNorm2d):
+                module.backup_momentum = module.momentum
+                module.momentum = 0
 
-    model.apply(_disable)
+        model.apply(_disable)
 
 
-def enable_running_stats(model):
-    def _enable(module):
-        if isinstance(module, nn.BatchNorm2d) and hasattr(module, "backup_momentum"):
-            module.momentum = module.backup_momentum
+    def enable_running_stats(self, model):
+        def _enable(module):
+            if isinstance(module, nn.BatchNorm2d) and hasattr(module, "backup_momentum"):
+                module.momentum = module.backup_momentum
 
-    model.apply(_enable)
+        model.apply(_enable)

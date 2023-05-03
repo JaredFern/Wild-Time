@@ -95,8 +95,8 @@ if __name__ == '__main__':
     parser.add_argument('--exp_name', type=str, default=None)
 
     # Experimental Setting
-    parser.add_argument('--offline_steps', type=int)
-    parser.add_argument('--online_steps', type=int)
+    parser.add_argument('--offline_steps', type=int, default=3000)
+    parser.add_argument('--online_steps', type=int, default=250)
     parser.add_argument('--eval_fix', action='store_true')
     parser.add_argument('--eval_stream', action='store_true')
     parser.add_argument('--eval_warmstart_finetune', action='store_true')
@@ -105,7 +105,8 @@ if __name__ == '__main__':
     # Experimental Parameters
     parser.add_argument('--swa_ewa', action='store_true')
     parser.add_argument('--swa_ewa_lambda', type=float, default=0.5)
-    parser.add_argument('--ewc_task_decay', type=float, default=2.0)
+    parser.add_argument('--ewc_task_decay', type=float, default=1.0)
+    parser.add_argument('--sam', action='store_true')
 
     # Contour Parameters
     parser.add_argument('--contour_timesteps', action='append', type=int)
@@ -122,27 +123,12 @@ if __name__ == '__main__':
         'num_workers': 8,
         # 'mini_batch_size': 128,
         'eval_batch_size': 512,
-        # 'ssl_finetune_iter': 1500,
         'linear_probe_iter': None,
-        'train_update_iter': 250,
-        'offline_steps': 4000,
-        'online_steps': 250,
-
-        'eval_fix': True,
-        'eval_warmstart_finetune': False,
-        'eval_fixed_timesteps': [],
-        'eval_features': False,
-        'difficulty': False,
         'linear_probe': False,
-        'online': False,
 
         'load_model': False,
         'torch_compile': False,
         'time_conditioned': False,
-        'swa_ewa': True,
-        'swa_ewa_lambda': 0.1,
-        'swa_steps': None,
-        'ewc_task_decay': 2,
 
         # Feature Analysis Params
         'feat_threshold': 0.1,

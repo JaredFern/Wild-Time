@@ -38,6 +38,7 @@ class BaseTrainer:
         self.mixup = args.mixup
         self.cut_mix = args.cut_mix
         self.mix_alpha = args.mix_alpha
+        self.sam = args.sam
         self.mini_batch_size = args.mini_batch_size
         self.eval_batch_size = args.eval_batch_size
         self.base_trainer_str = self.get_base_trainer_str()
@@ -88,13 +89,26 @@ class BaseTrainer:
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
 
+            if self.sam:
+                self.optimizer.enable_running_statistics(self.network)
+
             loss, logits, y = forward_pass(
                 x, y, self.train_dataset, self.network,
                 self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
             loss_all.append(loss.item())
             self.optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+
+            if self.sam:
+                self.optimizer.first_step(zero_grad=True)
+                self.optimizer.disable_running_stats(self.network)
+                sam_loss, sam_logits, sam_y = forward_pass(
+                    x, y, self.train_dataset, self.network,
+                    self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
+                sam_loss.backward()
+                self.optimizer.second_step(zero_grad=True)
+            else:
+                self.optimizer.step()
 
             if step > 0 and step == self.args.linear_probe_iter:
                 logger.info("==== Unfreezing Encoder for full Finetuning ====")

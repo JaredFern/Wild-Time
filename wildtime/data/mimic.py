@@ -13,6 +13,7 @@ ID_HELD_OUT = 0.2
 """
 Reference: https://github.com/Google-Health/records-research/tree/master/graph-convolutional-transformer
 """
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 def set_seed(seed):
     random.seed(seed)
@@ -342,7 +343,7 @@ class MIMICBase(Dataset):
             start_idx = end_idx
 
             for classid in range(self.num_classes):
-                sel_idx = np.nonzero(self.datasets[i][self.mode]['labels'].astype(np.int) == classid)[0]
+                sel_idx = np.nonzero(self.datasets[i][self.mode]['labels'].astype(np.int64) == classid)[0]
                 self.class_id_list[classid][i] = sel_idx
             print(f'Year {str(i)} loaded')
 
@@ -362,7 +363,7 @@ class MIMICBase(Dataset):
         if data_del:
             del self.datasets[prev_time]
         for classid in range(self.num_classes):
-            sel_idx = np.nonzero(self.datasets[time][self.mode]['labels'].astype(np.int) == classid)[0]
+            sel_idx = np.nonzero(self.datasets[time][self.mode]['labels'].astype(np.int64) == classid)[0]
             self.class_id_list[classid][time] = sel_idx
 
     def update_historical_K(self, idx, K):
@@ -377,7 +378,7 @@ class MIMICBase(Dataset):
                 (self.datasets[time][self.mode]['labels'], self.datasets[prev_time][self.mode]['labels'][:-last_K_num_samples]), axis=0)
             del self.datasets[prev_time]
             for classid in range(self.num_classes):
-                sel_idx = np.nonzero(self.datasets[time][self.mode]['labels'].astype(np.int) == classid)[0]
+                sel_idx = np.nonzero(self.datasets[time][self.mode]['labels'].astype(np.int64) == classid)[0]
                 self.class_id_list[classid][time] = sel_idx
         else:
             self.update_historical(idx)
@@ -391,7 +392,7 @@ class MIMICBase(Dataset):
         codes = [item[0] for item in self.datasets[time_idx][self.mode]['code'][sel_idx]]
         types = [item[1] for item in self.datasets[time_idx][self.mode]['code'][sel_idx]]
         code = (codes, types)
-        label = self.datasets[time_idx][self.mode]['labels'][sel_idx].astype(np.int)
+        label = self.datasets[time_idx][self.mode]['labels'][sel_idx].astype(np.int64)
 
         return code, torch.LongTensor([label]).squeeze(0).unsqueeze(1).cuda()
 

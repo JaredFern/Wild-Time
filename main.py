@@ -13,6 +13,7 @@ from torch import cuda
 from wildtime.methods import loss_landscape
 from wildtime.baseline_trainer import trainer_init
 from wildtime.configs.eval_fix import configs_yearbook, configs_huffpost, configs_fmow, configs_arxiv, configs_mimic_mortality, configs_mimic_readmission
+from wildtime.optimizers.sam import SAM
 from wildtime.methods.agem.agem import AGEM
 from wildtime.methods.coral.coral import DeepCORAL
 from wildtime.methods.erm.erm import ERM
@@ -100,10 +101,11 @@ if __name__ == '__main__':
     parser.add_argument('--eval_fix', action='store_true')
     parser.add_argument('--eval_stream', action='store_true')
     parser.add_argument('--eval_warmstart_finetune', action='store_true')
-    parser.add_argument('--eval_fixed_timesteps', action='append')
+    parser.add_argument('--eval_fixed_timesteps', action='append', default=[])
 
     # Experimental Parameters
     parser.add_argument('--swa_ewa', action='store_true')
+    parser.add_argument('--swa_steps', default=None)
     parser.add_argument('--swa_ewa_lambda', type=float, default=0.5)
     parser.add_argument('--ewc_task_decay', type=float, default=1.0)
     parser.add_argument('--sam', action='store_true')
@@ -119,7 +121,7 @@ if __name__ == '__main__':
 
     experimental_params = {
         'device': 0,
-        'random_seed': 1,
+        'random_seed': 0,
         'num_workers': 8,
         # 'mini_batch_size': 128,
         'eval_batch_size': 512,
@@ -178,6 +180,10 @@ if __name__ == '__main__':
         configs.reduction = 'none'
 
     dataset, criterion, network, optimizer, scheduler = trainer_init(configs)
+    if configs.torch_compile:
+        network = torch.compile(network)
+    if configs.sam:
+        optimizer = SAM(network.parameters(), torch.optim.Adam, rho=0.05, adaptive=False)
 
     if configs.method == 'groupdro':
         trainer = GroupDRO(configs, dataset, network, criterion, optimizer, scheduler)

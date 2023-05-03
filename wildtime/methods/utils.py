@@ -160,7 +160,7 @@ def split_into_groups(g):
     return unique_groups, group_indices, unique_counts
 
 def get_collate_functions(args, train_dataset):
-    if args.dataset == 'mimic':
+    if 'mimic' in args.dataset:
         train_collate_fn = collate_fn_mimic
         eval_collate_fn = collate_fn_mimic
     elif args.method == 'simclr':

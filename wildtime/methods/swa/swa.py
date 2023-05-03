@@ -94,7 +94,6 @@ class SWA(BaseTrainer):
                 self.swa_model.update_parameters(self.network)
                 self.save_model(t)
                 self.save_swa_model(t)
-                import ipdb; ipdb.set_trace()
 
                 if self.args.method in ['coral', 'groupdro', 'irm', 'erm']:
                     self.train_dataset.update_historical(i + 1, data_del=True)

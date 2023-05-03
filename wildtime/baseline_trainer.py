@@ -80,7 +80,7 @@ def _drug_init(args):
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     return dataset, criterion, network, optimizer, scheduler
 
-def _mimic_init(args):
+def _mimic_mortality_init(args):
     if args.method in group_datasets:
         from .data.mimic import MIMICGroup
         dataset = MIMICGroup(args)
@@ -91,13 +91,25 @@ def _mimic_init(args):
     scheduler = None
     network = Transformer(args, embedding_size=128, dropout=0.5, layers=2, heads=2).cuda()
     class_weight = None
-    if args.prediction_type == 'readmission':
-        class_weight = torch.FloatTensor(np.array([0.26, 0.74])).cuda()
-    elif args.prediction_type == 'mortality':
-        if args.lisa:
-            class_weight = torch.FloatTensor(np.array([0.03, 0.97])).cuda()
-        else:
-            class_weight = torch.FloatTensor(np.array([0.05, 0.95])).cuda()
+    if args.lisa:
+        class_weight = torch.FloatTensor(np.array([0.03, 0.97])).cuda()
+    else:
+        class_weight = torch.FloatTensor(np.array([0.05, 0.95])).cuda()
+    criterion = nn.CrossEntropyLoss(weight=class_weight, reduction=args.reduction).cuda()
+    optimizer = torch.optim.Adam(network.parameters(), lr=args.lr)  # use lr = 5e-4
+    return dataset, criterion, network, optimizer, scheduler
+
+def _mimic_readmission_init(args):
+    if args.method in group_datasets:
+        from .data.mimic import MIMICGroup
+        dataset = MIMICGroup(args)
+    else:
+        from .data.mimic import MIMIC
+        dataset = MIMIC(args)
+
+    scheduler = None
+    network = Transformer(args, embedding_size=128, dropout=0.5, layers=2, heads=2).cuda()
+    class_weight = torch.FloatTensor(np.array([0.26, 0.74])).cuda()
     criterion = nn.CrossEntropyLoss(weight=class_weight, reduction=args.reduction).cuda()
     optimizer = torch.optim.Adam(network.parameters(), lr=args.lr)  # use lr = 5e-4
     return dataset, criterion, network, optimizer, scheduler
@@ -148,6 +160,7 @@ def init(args):
     dataset, criterion, network, optimizer, scheduler = trainer_init(args)
     if args.torch_compile:
         network = torch.compile(network)
+    import ipdb; ipdb.set_trace()
     if args.sam:
         optimizer = SAM(network.parameters(), optimizer, rho=0.05, adaptive=False)
     method_dict = {
@@ -160,27 +173,5 @@ def init(args):
     return trainer
 
 def train(args):
-    logger_init(args)
     trainer = init(args)
     trainer.run()
-
-# def analyze_loss_landscape(args):
-#     dataset, criterion, network, _, _ = trainer_init(args)
-#     # TODO: Dataset --> List of Single Timeset Dataloaders
-#     # TODO: Dataset --> All Dataloaders
-
-#     model_checkpoints = args.loss_landscape_models
-
-#     model1 = network
-#     model2 = deepcopy(network)
-#     model3 = deepcopy(network)
-#     load_checkpoint(model1, model_checkpoints[0])
-#     load_checkpoint(model2, model_checkpoints[1])
-#     load_checkpoint(model3, model_checkpoi ts[2])
-#     model1 = model1.to(device=device)
-#     model2 = model2.to(device=device)
-#     model3 = model3.to(device=device)
-
-#     return calculate_loss_contours(
-#         model1, model2, model3, dataloaders[task]["test"], create_eval_fn(task), device
-#     )

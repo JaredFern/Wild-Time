@@ -90,7 +90,7 @@ class BaseTrainer:
             x, y = prepare_data(x, y, str(self.train_dataset))
 
             if self.sam:
-                self.optimizer.enable_running_statistics(self.network)
+                self.optimizer.enable_running_stats(self.network)
 
             loss, logits, y = forward_pass(
                 x, y, self.train_dataset, self.network,

@@ -8,6 +8,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 ID_HELD_OUT = 0.2
 
@@ -271,7 +272,7 @@ def preprocess_MIMIC(data, args):
 
     for eachyear in temp_datasets.keys():
         temp_datasets[eachyear]['labels'] = np.array(temp_datasets[eachyear]['labels'])
-        temp_datasets[eachyear]['code'] = np.array(temp_datasets[eachyear]['code'], dtype='object')
+        temp_datasets[eachyear]['code'] = np.array(temp_datasets[eachyear]['code'])
         num_samples = temp_datasets[eachyear]['labels'].shape[0]
         seed_ = np.random.get_state()
         np.random.seed(0)

@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 def generate_loss_contours(args, trainer):
     for timestep in args.contour_timesteps:
-        import ipdb; ipdb.set_trace()
         trainer.eval_dataset.update_current_timestamp(timestep)
         trainer.eval_dataset.mode = 1
         dataloader = FastDataLoader(trainer.eval_dataset, batch_size=args.eval_batch_size, num_workers=args.num_workers)

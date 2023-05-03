@@ -26,7 +26,7 @@ from .methods.si.si import SI
 from .methods.simclr.simclr import SimCLR
 from .methods.swa.swa import SWA
 from .methods.swav.swav import SwaV
-from .optimizers.sam import enable_running_stats, disable_running_stats, SAM
+from .optimizers.sam import SAM
 
 scheduler = None
 group_datasets = ['coral', 'groupdro', 'irm']

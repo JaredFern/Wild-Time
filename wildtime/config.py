@@ -6,9 +6,9 @@ config = {
     'random_seed': 1,  # 'random seed number'
 
     # Training hyperparameters
-    'train_update_iter': 10,  # 'train update iter'
-    'lr': 0.01,  # 'the base learning rate of the generator'
-    'momentum': 0.9,  # 'momentum'
+    'train_update_iter': 3000,  # 'train update iter'
+    'lr': 0.001,  # 'the base learning rate of the generator'
+    'momentum': 0.99,  # 'momentum'
     'weight_decay': 0.0,  # 'weight decay'
     'mini_batch_size': 32,  # 'mini batch size for SGD'
     'reduced_train_prop': None,  # 'proportion of samples allocated to train at each time step'
@@ -22,8 +22,10 @@ config = {
     'offline': False,  # help='evaluate offline at a single time step split'
     'difficulty': False,  # 'task difficulty'
     # todo: set value of split_time
-    'split_time': 0,  # 'timestep to split ID vs OOD' #
-    'eval_next_timesteps': 1,  # 'number of future timesteps to evaluate on'
+    'eval_fix': True,
+    'split_time': 1970,  # 'timestep to split ID vs OOD' #
+    'eval_next_timestamps': 10,  # 'number of future timesteps to evaluate on'
+    'eval_all_timestamps': False,
     'eval_worst_time': False,  # 'evaluate worst timestep accuracy'
     'load_model': False,  # 'load trained model for evaluation only'
     'eval_metric': 'acc',  # choices=['acc', 'f1', 'rmse']
@@ -70,8 +72,8 @@ config = {
     'finetune_iter': 10,  # 'number of iterations for finetuning SimCLR classifier'
 
     # Logging, saving, and testing options
-    'data_dir': './WildTime/datasets',  # 'directory for datasets.'
-    'log_dir': './checkpoints',  # 'directory for summaries and checkpoints.'
-    'results_dir': './results',  # 'directory for summaries and checkpoints.'
-    'num_workers': 0  # 'number of workers in data generator'
+    'data_dir': '/projects/tir6/strubell/data/wilds/data',  # 'directory for datasets.'
+    'log_dir': '/projects/tir6/strubell/jaredfer/projects/wild-time/results',  # 'directory for summaries and checkpoints.'
+    'results_dir': '/projects/tir6/strubell/jaredfer/projects/wild-time/results',  # 'directory for summaries and checkpoints.'
+    'num_workers': 8  # 'number of workers in data generator'
 }

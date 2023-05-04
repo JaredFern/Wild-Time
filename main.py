@@ -44,6 +44,8 @@ def logger_init(args, train=False):
 
     if not hasattr(args, 'exp_name') or args.exp_name is None:
         args.exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{eval_setting}"
+    else:
+        args.exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{args.exp_name}"
 
     args.exp_path = os.path.join(args.log_dir, args.exp_name)
     args.model_path = f"{args.exp_path}/checkpoints"
@@ -102,6 +104,10 @@ if __name__ == '__main__':
     parser.add_argument('--eval_stream', action='store_true')
     parser.add_argument('--eval_warmstart_finetune', action='store_true')
     parser.add_argument('--eval_fixed_timesteps', action='append', default=[])
+    parser.add_argument('--shuffle_timesteps', action='store_true')
+    parser.add_argument('--online_timesteps', action='append', default=[])
+    parser.add_argument('--last_k_timesteps', type=float, default=1)
+    parser.add_argument('--random_seed', type=int, default=0)
 
     # Experimental Parameters
     parser.add_argument('--swa_ewa', action='store_true')

@@ -57,7 +57,7 @@ def reinit_dataset(args):
         else:
             from ..data.drug import TdcDtiDg
             dataset = TdcDtiDg(args)
-    elif args.dataset in ['mimic']:
+    elif 'mimic' in args.dataset:
         if args.method in group_datasets:
             from ..data.mimic import MIMICGroup
             dataset = MIMICGroup(args)

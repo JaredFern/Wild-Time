@@ -1,7 +1,9 @@
 import copy
 import logging
+import math
 import os
 import time
+from random import shuffle
 
 import numpy as np
 import torch
@@ -82,17 +84,13 @@ class BaseTrainer:
         loss_all = []
         progress_bar = tqdm(total=num_steps)
 
-        if self.args.linear_probe_iter:
-            logger.info("==== Freezing Encoder for Linear Probing ====")
-            self.network.freeze_classifier()
-
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
 
             if self.sam:
                 self.optimizer.enable_running_stats(self.network)
 
-            loss, logits, y = forward_pass(
+            loss, _, y = forward_pass(
                 x, y, self.train_dataset, self.network,
                 self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
             loss_all.append(loss.item())
@@ -102,7 +100,7 @@ class BaseTrainer:
             if self.sam:
                 self.optimizer.first_step(zero_grad=True)
                 self.optimizer.disable_running_stats(self.network)
-                sam_loss, sam_logits, sam_y = forward_pass(
+                sam_loss, _, _  = forward_pass(
                     x, y, self.train_dataset, self.network,
                     self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
                 sam_loss.backward()
@@ -110,17 +108,9 @@ class BaseTrainer:
             else:
                 self.optimizer.step()
 
-            if step > 0 and step == self.args.linear_probe_iter:
-                logger.info("==== Unfreezing Encoder for full Finetuning ====")
-                self.network.unfreeze_classifier()
-            if self.args.method in ['swa'] and \
-                    self.args.swa_steps is not None and step % self.args.swa_steps == 0:
+            if self.args.method in ['swa'] and self.args.swa_steps and step % int(self.args.swa_steps) == 0:
                 logger.info("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
-
-            if step % 50 == 0:
-                logger.info(f'Train Loss at step {step}: {loss.item()}')
-                # logger.info(f'LR: {self.swa_scheduler.get_lr()}')
 
             progress_bar.update(1)
             if step == num_steps:
@@ -129,7 +119,18 @@ class BaseTrainer:
                 break
 
     def train_online(self):
-        for i, timestamp in enumerate(self.train_dataset.ENV[:-1]):
+        timestamps = self.train_dataset.ENV[:-1]
+        if self.args.online_timesteps:
+            timestamps = self.args.eval_fixed_timesteps
+        if self.args.last_k_timesteps:
+            num_timestamps = math.ceil(self.args.last_k_timesteps * len(timestamps))
+            timestamps = timestamps[-num_timestamps:]
+
+        if self.args.shuffle_timesteps:
+            shuffle(timestamps)
+
+        for i, timestamp in enumerate(timestamps):
+
             logger.info(f"Training at timestamp: {timestamp}")
             if self.args.load_model and self.model_path_exists(timestamp):
                 self.load_model(timestamp)
@@ -145,6 +146,7 @@ class BaseTrainer:
                 self.save_model(timestamp)
                 if self.args.method in ['coral', 'groupdro', 'irm', 'erm']:
                     self.train_dataset.update_historical(i + 1, data_del=True)
+
             if (self.args.eval_fix or self.args.eval_warmstart_finetune) and timestamp == self.split_time:
                 break
 
@@ -174,16 +176,6 @@ class BaseTrainer:
                     self.train_step(train_id_dataloader, self.args.offline_steps)
                     self.save_model("offline")
                 break
-
-    def train_fixed_timesteps(self):
-        for timestep in self.args.eval_fixed_timesteps:
-            self.train_dataset.update_current_timestamp(timestep)
-            train_dataloader = InfiniteDataLoader(
-                dataset=self.train_dataset, weights=None, batch_size=self.mini_batch_size, num_workers=self.num_workers, collate_fn=self.train_collate_fn)
-            self.train_step(train_dataloader, 500)
-            if self.args.method in ['swa']:
-                logger.info("==== Updating Weights of Averaged Model ====")
-                self.swa_model.update_parameters(self.network)
 
     def network_evaluation(self, test_time_dataloader):
         self.network.eval()
@@ -428,10 +420,6 @@ class BaseTrainer:
 
         # Continual train on each timestamp
         self.train_online()
-        self.evaluate_offline()
-
-    def run_train_fixed_timesteps(self):
-        self.train_fixed_timesteps()
         self.evaluate_offline()
 
     def run_eval_features(self):

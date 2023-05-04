@@ -1,12 +1,13 @@
 import copy
 import logging
+import math
 import os
 
 import torch
 from ..dataloaders import InfiniteDataLoader
 from ..base_trainer import BaseTrainer
 # from torchcontrib.optim import SWA as SWA_optimizer
-from torch.optim.swa_utils import AveragedModel, SWALR
+from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ class SWA(BaseTrainer):
                     self.load_swa_model(t)
                 else:
                     self.train_step(train_id_dataloader, self.args.offline_steps)
+                    # update_bn(train_id_dataloader, self.swa_model, device=self.args.device)
                     self.save_swa_model("offline")
                 break
 
@@ -71,13 +73,22 @@ class SWA(BaseTrainer):
 
     def train_online(self):
         self.swa_scheduler.step()
-
-        if len(self.args.eval_fixed_timesteps):
-            train_timesteps = self.args.eval_fixed_timesteps
+        if self.args.eval_fix or self.args.eval_warmstart_finetune:
+            split_idx = self.train_dataset.ENV.index(self.split_time)
+            timestamps = self.train_dataset.ENV[:split_idx + 1]
         else:
-            train_timesteps = self.train_dataset.ENV[:-1]
+            timestamps = self.train_dataset.ENV[:-1]
 
-        for i, t in enumerate(train_timesteps):
+        if self.args.online_timesteps:
+            timestamps = self.args.eval_fixed_timesteps
+        if self.args.last_k_timesteps:
+            num_timestamps = math.ceil(self.args.last_k_timesteps * len(timestamps))
+            timestamps = timestamps[-num_timestamps:]
+        if self.args.shuffle_timesteps:
+            shuffle(timestamps)
+
+
+        for i, t in enumerate(timestamps):
             logger.info(f"Training at timestamp {t}")
             if self.args.load_model and self.model_path_exists(t):
                 self.load_model(t)
@@ -87,11 +98,14 @@ class SWA(BaseTrainer):
                 self.train_dataset.update_current_timestamp(t)
                 if self.args.method in ['simclr', 'swav']:
                     self.train_dataset.ssl_training = True
-                train_dataloader = InfiniteDataLoader(dataset=self.train_dataset, weights=None, batch_size=self.mini_batch_size,
-                                                    num_workers=self.num_workers, collate_fn=self.train_collate_fn)
+                train_dataloader = InfiniteDataLoader(
+                    dataset=self.train_dataset, weights=None,
+                    batch_size=self.mini_batch_size,
+                    num_workers=self.num_workers, collate_fn=self.train_collate_fn)
                 self.train_step(train_dataloader, self.args.online_steps)
                 logger.info("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
+                # update_bn(train_dataloader, self.swa_model, device=self.args.device)
                 self.save_model(t)
                 self.save_swa_model(t)
 

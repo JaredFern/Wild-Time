@@ -5,4 +5,5 @@ build/
 checkpoints/
 dist/
 Data/
+logs/
 wildtime.egg-info/

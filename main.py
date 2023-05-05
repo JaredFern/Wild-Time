@@ -47,7 +47,7 @@ def logger_init(args, train=False):
     else:
         args.exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{args.exp_name}"
 
-    if not hasattr(args, 'exp_path'):
+    if not hasattr(args, 'exp_path') or args.exp_path is None:
         args.exp_path = os.path.join(args.log_dir, args.exp_name)
     else:
         args.exp_path = os.path.join(args.log_dir, args.exp_path)

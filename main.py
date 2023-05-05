@@ -47,7 +47,11 @@ def logger_init(args, train=False):
     else:
         args.exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{args.exp_name}"
 
-    args.exp_path = os.path.join(args.log_dir, args.exp_name)
+    if not hasattr(args, 'exp_path'):
+        args.exp_path = os.path.join(args.log_dir, args.exp_name)
+    else:
+        args.exp_path = os.path.join(args.log_dir, args.exp_path)
+
     args.model_path = f"{args.exp_path}/checkpoints"
 
     if train:
@@ -96,6 +100,7 @@ if __name__ == '__main__':
     # Configs
     parser.add_argument('--config_file', type=str, default=None)
     parser.add_argument('--exp_name', type=str, default=None)
+    parser.add_argument('--exp_path', type=str, default=None)
 
     # Experimental Setting
     parser.add_argument('--offline_steps', type=int, default=3000)
@@ -119,7 +124,7 @@ if __name__ == '__main__':
     # Contour Parameters
     parser.add_argument('--contour_timesteps', action='append', type=int)
     parser.add_argument('--contour_models', nargs=3)
-    parser.add_argument('--contour_granularity', type=float, default=5)
+    parser.add_argument('--contour_granularity', type=int, default=5)
     parser.add_argument('--contour_margin', type=float, default=0.1)
     parser.add_argument('--contour_increment', type=float, default=0.01)
     args = parser.parse_args()

@@ -82,7 +82,6 @@ class BaseTrainer:
             num_steps = self.args.train_update_iter
         self.network.train()
         loss_all = []
-        progress_bar = tqdm(total=num_steps)
 
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
@@ -112,7 +111,6 @@ class BaseTrainer:
                 logger.info("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
 
-            progress_bar.update(1)
             if step == num_steps:
                 if self.scheduler is not None:
                     self.scheduler.step()

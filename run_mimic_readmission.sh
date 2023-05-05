@@ -75,7 +75,7 @@ python main.py \
 python main.py \
     --train --eval_warmstart_finetune --exp_name warmstart_csaw \
     --dataset $DATASET --random_seed $SEED \
-    --method swa --swa_ewa --swa_ewa_lambda 0.10 \
+    --method swa --swa_ewa --swa_ewa_lambda 0.50 \
     --offline_steps $OFFLINE_STEPS --online_steps $ONLINE_STEPS;
 
 # Cold Start and EWA

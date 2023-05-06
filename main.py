@@ -10,7 +10,7 @@ import numpy as np
 import torch
 from torch import cuda
 
-from wildtime.methods import loss_landscape
+from wildtime.methods import loss_landscape, interpolation_plots
 from wildtime.baseline_trainer import trainer_init
 from wildtime.configs.eval_fix import configs_yearbook, configs_huffpost, configs_fmow, configs_arxiv, configs_mimic_mortality, configs_mimic_readmission
 from wildtime.optimizers.sam import SAM
@@ -92,6 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--eval', action='store_true')
     parser.add_argument('--loss_contours', action='store_true')
+    parser.add_argument('--interpolation_plots', action='store_true')
 
     # Dataset and Methods
     parser.add_argument('--dataset', type=str, default='arxiv', choices=['rmnist', 'arxiv', 'huffpost', 'fmow', 'yearbook', 'mimic_mortality', 'mimic_readmission'])
@@ -128,8 +129,12 @@ if __name__ == '__main__':
     parser.add_argument('--contour_granularity', type=int, default=5)
     parser.add_argument('--contour_margin', type=float, default=0.1)
     parser.add_argument('--contour_increment', type=float, default=0.01)
-    args = parser.parse_args()
 
+    # Interpolation Parameters
+    parser.add_argument('--interpolation_timesteps', nargs='+', type=int)
+    parser.add_argument('--interpolation_models', nargs=2)
+    parser.add_argument('--interpolation_granularity', type=int, default=5)
+    args = parser.parse_args()
 
     experimental_params = {
         'device': 0,
@@ -157,6 +162,11 @@ if __name__ == '__main__':
         'contour_metric': 'losses',
         'contour_increment': 0.01,
         'contour_margin': 0.05,
+
+        'interpolation_timesteps': [11],
+        'interpolation_models': ['9', '10', '10_swa'],
+        'interpolation_granularity': 5,
+        'interpolation_metric': 'losses',
 
         'checkpoint_path': None,
         'data_dir': '/projects/tir6/strubell/data/wilds/data',
@@ -236,6 +246,9 @@ if __name__ == '__main__':
             labels = contour_data['model_ids']
         else:
             labels = ['w_0', 'w_1', 'w_2']
+    if configs.interpolation_plots:
+        interpolation_data = interpolation_plots.generate_interpolation_plots(configs, trainer)
+        print(interpolation_data)
 
         loss_landscape.plot_contour(
             contour_data['grid'],

@@ -94,7 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--loss_contours', action='store_true')
 
     # Dataset and Methods
-    parser.add_argument('--dataset', type=str, default='arxiv', choices=['arxiv', 'huffpost', 'fmow', 'yearbook', 'mimic_mortality', 'mimic_readmission'])
+    parser.add_argument('--dataset', type=str, default='arxiv', choices=['rmnist', 'arxiv', 'huffpost', 'fmow', 'yearbook', 'mimic_mortality', 'mimic_readmission'])
     parser.add_argument('--method', type=str, default='erm', choices=['erm', 'ft', 'ewc', 'si', 'irm', 'coral', 'groupdro', 'agem', 'simclr', 'swav', 'swa'])
 
     # Configs
@@ -120,6 +120,7 @@ if __name__ == '__main__':
     parser.add_argument('--swa_ewa_lambda', type=float, default=0.5)
     parser.add_argument('--ewc_task_decay', type=float, default=1.0)
     parser.add_argument('--sam', action='store_true')
+    parser.add_argument('--sam_rho', type=float, default=0.05)
 
     # Contour Parameters
     parser.add_argument('--contour_timesteps', action='append', type=int)

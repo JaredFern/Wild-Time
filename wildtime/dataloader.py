@@ -1,6 +1,16 @@
 scheduler = None
 is_group_datasets = ['coral', 'groupdro', 'irm']
 
+
+def _rmnist_init(args, is_group_data):
+    if is_group_data:
+        from .data.rmnist import RMnistGroup
+        dataset = RMnistGroup(args)
+    else:
+        from .data.rmnist import RMnist
+        dataset = RMnist(args)
+    return dataset
+
 def _yearbook_init(args, is_group_data):
     if is_group_data:
         from .data.yearbook import YearbookGroup
@@ -60,6 +70,7 @@ def _huffpost_init(args, is_group_data):
 
 def getdata(args, is_group_data = False):
     dataset_name = args.dataset
+    if dataset_name == 'rmnist' : return _rmnist_init(args, is_group_data)
     if dataset_name == 'arxiv' : return _arxiv_init(args, is_group_data)
     if dataset_name == 'drug': return _drug_init(args, is_group_data)
     if dataset_name == 'fmow': return _fmow_init(args, is_group_data)

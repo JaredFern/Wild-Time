@@ -36,6 +36,13 @@ def reinit_dataset(args):
         else:
             from ..data.huffpost import HuffPost
             dataset = HuffPost(args)
+    if args.dataset in ['rmnist']:
+        if args.method in group_datasets:
+            from ..data.rmnist import RMnistGroup
+            dataset = RMnistGroup(args)
+        else:
+            from ..data.rmnist import RMnist
+            dataset = RMnist(args)
     elif args.dataset in ['yearbook']:
         if args.method in group_datasets:
             from ..data.yearbook import YearbookGroup

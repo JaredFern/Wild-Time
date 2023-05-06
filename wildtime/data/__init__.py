@@ -1,3 +1,4 @@
+from .rmnist import RMnist, RMnistGroup
 from .arxiv import ArXiv, ArXivGroup
 from .drug import TdcDtiDg, TdcDtiDgGroup
 from .fmow import FMoW, FMoWGroup

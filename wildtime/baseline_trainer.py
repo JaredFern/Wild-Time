@@ -9,11 +9,11 @@ import torch.nn as nn
 from datetime import date
 from functools import partial
 
-# from .analysis.loss_landscape import calculate_loss_contours
 from .networks.article import ArticleNetwork
 from .networks.drug import DTI_Encoder, DTI_Classifier, DrugNetwork
 from .networks.fmow import FMoWNetwork
 from .networks.mimic import Transformer
+from .networks.rmnist import RMnistNetwork
 from .networks.yearbook import YearbookNetwork
 from .methods.agem.agem import AGEM
 from .methods.coral.coral import DeepCORAL
@@ -33,6 +33,22 @@ group_datasets = ['coral', 'groupdro', 'irm']
 print = partial(print, flush=True)
 
 logger = logging.getLogger(__name__)
+
+
+def _rmnist_init(args):
+    if args.method in group_datasets:
+        from .data.rmnist import RMnistGroup
+        dataset = RMnistGroup(args)
+    else:
+        from .data.rmnist import RMnist
+        dataset = RMnist(args)
+
+    scheduler = None
+    criterion = nn.CrossEntropyLoss(reduction=args.reduction).cuda()
+    network = RMnistNetwork(args, num_input_channels=3,
+                            num_classes=dataset.num_classes).cuda()
+    optimizer = torch.optim.Adam(network.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    return dataset, criterion, network, optimizer, scheduler
 
 
 def _yearbook_init(args):
@@ -162,7 +178,7 @@ def init(args):
         network = torch.compile(network)
     import ipdb; ipdb.set_trace()
     if args.sam:
-        optimizer = SAM(network.parameters(), optimizer, rho=0.05, adaptive=False)
+        optimizer = SAM(network.parameters(), optimizer, rho=args.sam_rho, adaptive=False)
     method_dict = {
         'groupdro': 'GroupDRO', 'coral': 'DeepCORAL', 'irm': 'IRM', 'ft': 'FT',
         'erm': 'ERM', 'ewc': 'EWC', 'agem': 'AGEM', 'si': 'SI', 'simclr': 'SimCLR',

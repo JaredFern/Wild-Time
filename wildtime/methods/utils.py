@@ -201,20 +201,31 @@ def collate_fn_mimic(batch):
         groupid = torch.cat([item[2] for item in batch], dim=0).unsqueeze(1)
         return [(codes, types), target, groupid]
 
-def flatten_parameters(model):
+def flatten_parameters(model, method='erm'):
     """Returns a flattened tensor containing the parameters of model."""
-    return torch.cat([param.flatten() for param in model.module.parameters()])
+    if method in ['swa']:
+        return torch.cat([param.flatten() for param in model.parameters()])
+    else:
+        return torch.cat([param.flatten() for param in model.module.parameters()])
 
 
-def assign_params(model, w):
+def assign_params(model, w, method='erm'):
     """Takes in a flattened parameter vector w and assigns them to the parameters
     of model.
     """
-    offset = 0
-    for parameter in model.module.parameters():
-        param_size = parameter.nelement()
-        parameter.data = w[offset : offset + param_size].reshape(parameter.shape)
-        offset += param_size
+    if method in ['swa']:
+        offset = 0
+        for parameter in model.module.parameters():
+            param_size = parameter.nelement()
+            parameter.data = w[offset : offset + param_size].reshape(parameter.shape)
+            offset += param_size
+    else:
+        offset = 0
+        for parameter in model.parameters():
+            param_size = parameter.nelement()
+            parameter.data = w[offset : offset + param_size].reshape(parameter.shape)
+            offset += param_size
+
 
 
 def flatten_gradients(model):

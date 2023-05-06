@@ -79,9 +79,9 @@ def calculate_loss_contours(
             evaluated at granularity*granularity points.
         margin: How much margin around models to create evaluation plane.
     """
-    w1 = flatten_parameters(model1).to(device=device)
-    w2 = flatten_parameters(model2).to(device=device)
-    w3 = flatten_parameters(model3).to(device=device)
+    w1 = flatten_parameters(model1, method).to(device=device)
+    w2 = flatten_parameters(model2, method).to(device=device)
+    w3 = flatten_parameters(model3, method).to(device=device)
     model1 = model1.to(device=device)
 
     # Define x axis
@@ -108,7 +108,7 @@ def calculate_loss_contours(
     for i, alpha in enumerate(alphas):
         for j, beta in enumerate(betas):
             p = w1 + alpha * dx * u + beta * dy * v
-            assign_params(model1, p)
+            assign_params(model1, p, method)
             if method in ['swa']:
                 update_bn(dataloader, model1, device)
             metrics = eval_fn(model1, dataloader, device)

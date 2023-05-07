@@ -96,8 +96,8 @@ def calculate_interpolation_accuracy(
         margin: How much margin around models to create evaluation plane.
         plot_comb: List of indices of [model1, model2, model3] that should be averaged and plotted
     """
-    w1 = flatten_parameters(model1).to(device=device)
-    w2 = flatten_parameters(model2).to(device=device)
+    w1 = flatten_parameters(model1, method).to(device=device)
+    w2 = flatten_parameters(model2, method).to(device=device)
     model1 = model1.to(device=device)
 
     alphas = np.linspace(0.0, 1.0, granularity)
@@ -109,13 +109,14 @@ def calculate_interpolation_accuracy(
     interp_model = deepcopy(model1)
     for i, alpha in enumerate(alphas):
         p = (1 - alpha) * w1 + (alpha * w2)
-        assign_params(interp_model, p)
+        assign_params(interp_model, p, method)
         if method in ['swa']:
             update_bn(dataloader, interp_model, device)
         metrics = eval_fn(interp_model, dataloader, device)
         losses[i] = metrics["loss"]
         accuracies[i] = metrics["accuracy"]
         progress.update()
+    import ipdb; ipdb.set_trace()
     progress.close()
 
     outputs = {

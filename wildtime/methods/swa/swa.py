@@ -38,15 +38,19 @@ class SWA(BaseTrainer):
         self.results_file = os.path.join(args.results_dir, f'{str(dataset)}-{str(self)}.pkl')
 
     def train_offline(self):
-        for i, t in enumerate(self.train_dataset.ENV):
-            if t < self.split_time:
+        timesteps = self.train_dataset.ENV
+        if self.args.timestep_stride:
+            timesteps = timesteps[::self.args.timestep_stride]
+
+        for i, t in enumerate(timesteps):
+            if t < self.split_time: # , self.args.warmstart_split_time):
                 self.train_dataset.mode = 0
                 self.train_dataset.update_current_timestamp(t)
                 self.train_dataset.update_historical(i + 1)
                 self.train_dataset.mode = 1
                 self.train_dataset.update_current_timestamp(t)
                 self.train_dataset.update_historical(i + 1, data_del=True)
-            elif t == self.split_time:
+            elif t == self.split_time: #  or t == self.args.warmstart_split_time:
                 self.train_dataset.mode = 0
                 self.train_dataset.update_current_timestamp(t)
                 train_id_dataloader = InfiniteDataLoader(

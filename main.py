@@ -97,6 +97,7 @@ if __name__ == '__main__':
     # Dataset and Methods
     parser.add_argument('--dataset', type=str, default='arxiv', choices=['rmnist', 'arxiv', 'huffpost', 'fmow', 'yearbook', 'mimic_mortality', 'mimic_readmission'])
     parser.add_argument('--method', type=str, default='erm', choices=['erm', 'ft', 'ewc', 'si', 'irm', 'coral', 'groupdro', 'agem', 'simclr', 'swav', 'swa'])
+    parser.add_argument('--random_seed', type=int, default=0)
 
     # Configs
     parser.add_argument('--config_file', type=str, default=None)
@@ -110,13 +111,14 @@ if __name__ == '__main__':
     parser.add_argument('--eval_fix', action='store_true')
     parser.add_argument('--eval_stream', action='store_true')
     parser.add_argument('--eval_warmstart_finetune', action='store_true')
+
+    # Timesteps
     parser.add_argument('--eval_fixed_timesteps', action='append', default=[])
     parser.add_argument('--shuffle_timesteps', action='store_true')
     parser.add_argument('--online_timesteps', action='append', default=[])
     parser.add_argument('--last_k_timesteps', type=float, default=1)
-    parser.add_argument('--warmstart_timesteps', action='append', default=[])
+    parser.add_argument('--warmstart_split_time', type=int, default=None)
     parser.add_argument('--timestep_stride', type=int, default=1)
-    parser.add_argument('--random_seed', type=int, default=0)
 
     # Experimental Parameters
     parser.add_argument('--swa_ewa', action='store_true')

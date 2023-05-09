@@ -152,7 +152,7 @@ class YearbookBase(Dataset):
         self.mode = 0
         self.ssl_training = False
 
-        self.ENV = list(sorted(self.datasets.keys()))
+        self.ENV = list(sorted(self.datasets.keys()))[::args.timestep_stride]
         self.num_tasks = len(self.ENV)
         self.num_examples = {i: len(self.datasets[i][self.mode]['labels']) for i in self.ENV}
 

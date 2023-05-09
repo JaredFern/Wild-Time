@@ -116,6 +116,7 @@ class BaseTrainer:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 break
+            progress_bar.update(1)
 
     def train_online(self):
         timestamps = self.train_dataset.ENV[:-1]
@@ -124,6 +125,8 @@ class BaseTrainer:
         if self.args.last_k_timesteps:
             num_timestamps = math.ceil(self.args.last_k_timesteps * len(timestamps))
             timestamps = timestamps[-num_timestamps:]
+        if self.args.timestep_stride:
+            timestamps = timestamps[::self.args.timestep_stride]
 
         if self.args.shuffle_timesteps:
             shuffle(timestamps)
@@ -150,6 +153,7 @@ class BaseTrainer:
                 break
 
     def train_offline(self):
+        timestamps = self.train_dataset.ENV
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
 
@@ -157,6 +161,9 @@ class BaseTrainer:
             timesteps = self.args.warmstart_timesteps
         else:
             timesteps = self.train_dataset.ENV
+
+        if self.args.timestep_stride:
+            timestamps = timesteps[::self.args.timestep_stride]
 
         for i, timestamp in enumerate(timesteps):
             if timestamp < self.split_time:

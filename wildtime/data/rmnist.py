@@ -27,14 +27,11 @@ class RMnistBase(Dataset):
         self.mode = 0
         self.ssl_training = False
 
-        self.ENV = list(sorted(self.datasets[0].keys()))[0:16:args.timestep_stride] # [::args.timestep_stride]
+        self.ENV = list(sorted(self.datasets[0].keys()))
         self.num_tasks = len(self.ENV)
 
     def update_historical(self, idx, data_del=True):
-        try:
-            time = self.ENV[idx]
-        except:
-            import ipdb; ipdb.set_trace()
+        time = self.ENV[idx]
         prev_time = self.ENV[idx - 1]
         self.datasets[self.mode][time]['images'] = np.concatenate(
             (self.datasets[self.mode][time]['images'], self.datasets[self.mode][prev_time]['images']), axis=0)

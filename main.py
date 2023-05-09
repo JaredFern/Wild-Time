@@ -12,7 +12,7 @@ from torch import cuda
 
 from wildtime.methods import loss_landscape, interpolation_plots
 from wildtime.baseline_trainer import trainer_init
-from wildtime.configs.eval_fix import configs_yearbook, configs_huffpost, configs_fmow, configs_arxiv, configs_mimic_mortality, configs_mimic_readmission
+from wildtime.configs.eval_fix import configs_yearbook, configs_huffpost, configs_fmow, configs_arxiv, configs_mimic_mortality, configs_mimic_readmission, configs_rmnist
 from wildtime.optimizers.sam import SAM
 from wildtime.methods.agem.agem import AGEM
 from wildtime.methods.coral.coral import DeepCORAL
@@ -102,6 +102,7 @@ if __name__ == '__main__':
     parser.add_argument('--config_file', type=str, default=None)
     parser.add_argument('--exp_name', type=str, default=None)
     parser.add_argument('--exp_path', type=str, default=None)
+    parser.add_argument('--torch_compile', action='store_true')
 
     # Experimental Setting
     parser.add_argument('--offline_steps', type=int, default=3000)
@@ -113,6 +114,8 @@ if __name__ == '__main__':
     parser.add_argument('--shuffle_timesteps', action='store_true')
     parser.add_argument('--online_timesteps', action='append', default=[])
     parser.add_argument('--last_k_timesteps', type=float, default=1)
+    parser.add_argument('--warmstart_timesteps', action='append', default=[])
+    parser.add_argument('--timestep_stride', type=int, default=1)
     parser.add_argument('--random_seed', type=int, default=0)
 
     # Experimental Parameters

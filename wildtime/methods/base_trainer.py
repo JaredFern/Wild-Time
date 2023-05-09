@@ -83,6 +83,7 @@ class BaseTrainer:
         self.network.train()
         loss_all = []
 
+        progress_bar = tqdm(total=num_steps)
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
 
@@ -152,7 +153,12 @@ class BaseTrainer:
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
 
-        for i, timestamp in enumerate(self.train_dataset.ENV):
+        if self.args.warmstart_timesteps:
+            timesteps = self.args.warmstart_timesteps
+        else:
+            timesteps = self.train_dataset.ENV
+
+        for i, timestamp in enumerate(timesteps):
             if timestamp < self.split_time:
                 self.train_dataset.mode = 0
                 self.train_dataset.update_current_timestamp(timestamp)
@@ -327,6 +333,7 @@ class BaseTrainer:
                 acc = self.network_evaluation(test_ood_dataloader)
                 logger.info(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
                 metrics.append(acc)
+        import ipdb; ipdb.set_trace()
         logger.info(f'\nOOD Average Metric: \t{np.mean(metrics)}'
               f'\nOOD Worst Metric: \t{np.min(metrics)}'
               f'\nAll OOD Metrics: \t{metrics}\n')

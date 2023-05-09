@@ -18,13 +18,15 @@ def prepare_data(x, y, dataset_name: str):
         x = x.to(dtype=torch.int64).cuda()
         if len(y.shape) > 1:
             y = y.squeeze(1).cuda()
-    elif dataset_name in ['fmow', 'yearbook']:
+    elif dataset_name in ['fmow', 'yearbook', 'rmnist']:
         if isinstance(x, tuple) or isinstance(x, list):
             x = list(elt.cuda() for elt in x)
         else:
             x = x.cuda()
         if len(y.shape) > 1:
             y = y.squeeze(1).cuda()
+        else:
+            y = y.cuda()
     return x, y
 
 
@@ -204,9 +206,9 @@ def collate_fn_mimic(batch):
 def flatten_parameters(model, method='erm'):
     """Returns a flattened tensor containing the parameters of model."""
     if method in ['swa']:
-        return torch.cat([param.flatten() for param in model.parameters()])
-    else:
         return torch.cat([param.flatten() for param in model.module.parameters()])
+    else:
+        return torch.cat([param.flatten() for param in model.parameters()])
 
 
 def assign_params(model, w, method='erm'):

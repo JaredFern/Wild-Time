@@ -26,6 +26,7 @@ class BaseTrainer:
 
         # Dataset settings
         self.train_dataset = dataset
+        self.train_dataset.ENV = self.train_dataset.ENV
         self.train_dataset.mode = 0
         self.eval_dataset = copy.deepcopy(dataset)
         self.eval_dataset.mode = 2
@@ -153,19 +154,18 @@ class BaseTrainer:
                 break
 
     def train_offline(self):
-        timestamps = self.train_dataset.ENV
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
 
         if self.args.warmstart_timesteps:
-            timesteps = self.args.warmstart_timesteps
+            timestamps = self.args.warmstart_timesteps
         else:
-            timesteps = self.train_dataset.ENV
+            timestamps = self.train_dataset.ENV
 
         if self.args.timestep_stride:
             timestamps = timesteps[::self.args.timestep_stride]
 
-        for i, timestamp in enumerate(timesteps):
+        for i, timestamp in enumerate(timestamps):
             if timestamp < self.split_time:
                 self.train_dataset.mode = 0
                 self.train_dataset.update_current_timestamp(timestamp)
@@ -340,7 +340,6 @@ class BaseTrainer:
                 acc = self.network_evaluation(test_ood_dataloader)
                 logger.info(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
                 metrics.append(acc)
-        import ipdb; ipdb.set_trace()
         logger.info(f'\nOOD Average Metric: \t{np.mean(metrics)}'
               f'\nOOD Worst Metric: \t{np.min(metrics)}'
               f'\nAll OOD Metrics: \t{metrics}\n')

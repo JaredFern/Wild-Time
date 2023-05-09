@@ -157,11 +157,6 @@ class BaseTrainer:
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
 
-        if self.args.warmstart_timesteps:
-            timestamps = self.args.warmstart_timesteps
-        else:
-            timestamps = self.train_dataset.ENV
-
         if self.args.timestep_stride:
             timestamps = timesteps[::self.args.timestep_stride]
 

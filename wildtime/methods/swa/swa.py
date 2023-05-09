@@ -91,6 +91,9 @@ class SWA(BaseTrainer):
         if self.args.shuffle_timesteps:
             shuffle(timestamps)
 
+        timestamps  = self.train_dataset.ENV
+        if self.args.timestep_stride:
+            timestamps = timestamps[::self.args.timestep_stride]
 
         for i, t in enumerate(timestamps):
             logger.info(f"Training at timestamp {t}")

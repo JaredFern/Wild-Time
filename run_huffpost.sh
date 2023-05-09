@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-#SBATCH --job-name=huffpost
+#SBATCH --job-name=huffpost-2
 #SBATCH --output=logs/huffpost.out
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:1
@@ -11,14 +11,14 @@
 DATASET="huffpost";
 
 OFFLINE_STEPS=6000;
-WARMSTART_STEPS=3000;
-OFFLINE_SWA_STEPS=500;
-ONLINE_STEPS=500;
+WARMSTART_STEPS=6000;
+OFFLINE_SWA_STEPS=1000;
+ONLINE_STEPS=1000;
 SEED=2;
 
 source activate wild-time;
 
-########## Baselines ##########
+# ########## Baselines ##########
 
 # ERM Reproduction
 python main.py \
@@ -119,13 +119,13 @@ python main.py \
     --offline_steps $WARMSTART_STEPS --online_steps $ONLINE_STEPS;
 
 
-######### Comparisons ##########
+# ######### Comparisons ##########
 
-# SAM Optimizer
+# # SAM Optimizer
 python main.py \
     --train --eval_warmstart_finetune --exp_name csaw_sam_seed_${SEED} \
     --dataset $DATASET --random_seed $SEED \
-    --method swa --swa_ewa --swa_ewa_lambda 0.50 --sam \
+    --method swa --swa_ewa --swa_ewa_lambda 0.50 --sam  --sam_rho 0.15 \
     --offline_steps $WARMSTART_STEPS --online_steps $ONLINE_STEPS;
 
 #########  K-Last Weight Averaging #########

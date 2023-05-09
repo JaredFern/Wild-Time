@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-#SBATCH --job-name=arxiv-1
+#SBATCH --job-name=arxiv-2
 #SBATCH --output=logs/arxiv.out
 #SBATCH --nodes=1
 #SBATCH --gres=gpu:A6000:1
@@ -11,9 +11,9 @@
 DATASET="arxiv";
 
 OFFLINE_STEPS=6000;
-WARMSTART_STEPS=3000;
-OFFLINE_SWA_STEPS=500;
-ONLINE_STEPS=500;
+WARMSTART_STEPS=6000;
+OFFLINE_SWA_STEPS=1000;
+ONLINE_STEPS=1000;
 SEED=2;
 
 source activate wild-time;

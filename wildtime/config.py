@@ -1,10 +1,14 @@
 
 config = {
+<<<<<<< Updated upstream
     
     'num_workers': 8,
     'torch_compile': True
 
     'dataset': 'fmow', # choices=['arxiv', 'drug', 'huffpost', 'mimic', 'fmow', 'yearbook']
+=======
+    'dataset': 'mimic', # choices=['arxiv', 'drug', 'huffpost', 'mimic', 'fmow', 'yearbook']
+>>>>>>> Stashed changes
     'method': 'erm', # choices=['agem', 'coral', 'ensemble', 'ewc', 'ft', 'groupdro', 'irm', 'si', 'erm', 'simclr', 'swav', 'swa']
     'device': 0,  # 'gpu id'
     'random_seed': 1,  # 'random seed number'
@@ -14,7 +18,11 @@ config = {
     'lr': 0.01,  # 'the base learning rate of the generator'
     'momentum': 0.9,  # 'momentum'
     'weight_decay': 0.0,  # 'weight decay'
+<<<<<<< Updated upstream
     'mini_batch_size': 64,  # 'mini batch size for SGD'
+=======
+    'mini_batch_size': 128,  # 'mini batch size for SGD'
+>>>>>>> Stashed changes
     'reduced_train_prop': None,  # 'proportion of samples allocated to train at each time step'
     'reduction': 'mean',
 
@@ -26,8 +34,15 @@ config = {
     'offline': False,  # help='evaluate offline at a single time step split'
     'difficulty': False,  # 'task difficulty'
     # todo: set value of split_time
+<<<<<<< Updated upstream
     'split_time': 13,  # 'timestep to split ID vs OOD' #
     'eval_next_timesteps': 6,  # 'number of future timesteps to evaluate on'
+=======
+    'eval_fix': True,
+    'split_time': 2011,  # 'timestep to split ID vs OOD' #
+    'eval_next_timestamps': 10,  # 'number of future timesteps to evaluate on'
+    'eval_all_timestamps': False,
+>>>>>>> Stashed changes
     'eval_worst_time': False,  # 'evaluate worst timestep accuracy'
     'load_model': False,  # 'load trained model for evaluation only'
     'eval_metric': 'acc',  # choices=['acc', 'f1', 'rmse']

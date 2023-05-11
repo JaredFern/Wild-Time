@@ -8,6 +8,7 @@ from random import shuffle
 import numpy as np
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 from sklearn import metrics
 from tdc import Evaluator
 from tqdm import tqdm
@@ -16,6 +17,7 @@ from .dataloaders import FastDataLoader, InfiniteDataLoader
 from .utils import prepare_data, forward_pass, get_collate_functions, reinit_dataset
 
 logger = logging.getLogger(__name__)
+
 
 class BaseTrainer:
     def __init__(self, args, dataset, network, criterion, optimizer, scheduler):
@@ -32,7 +34,8 @@ class BaseTrainer:
         self.eval_dataset.mode = 2
         self.num_classes = dataset.num_classes
         self.num_tasks = dataset.num_tasks
-        self.train_collate_fn, self.eval_collate_fn = get_collate_functions(args, self.train_dataset)
+        self.train_collate_fn, self.eval_collate_fn = get_collate_functions(
+            args, self.train_dataset)
 
         # Training hyperparameters
         self.args = args
@@ -65,7 +68,7 @@ class BaseTrainer:
 
     def get_base_trainer_str(self):
         base_trainer_str = f'train_update_iter={self.train_update_iter}-lr={self.args.lr}-' \
-                                f'mini_batch_size={self.args.mini_batch_size}-seed={self.args.random_seed}'
+            f'mini_batch_size={self.args.mini_batch_size}-seed={self.args.random_seed}'
         if self.args.lisa:
             base_trainer_str += f'-lisa-mix_alpha={self.mix_alpha}'
         elif self.mixup:
@@ -101,7 +104,7 @@ class BaseTrainer:
             if self.sam:
                 self.optimizer.first_step(zero_grad=True)
                 self.optimizer.disable_running_stats(self.network)
-                sam_loss, _, _  = forward_pass(
+                sam_loss, _, _ = forward_pass(
                     x, y, self.train_dataset, self.network,
                     self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
                 sam_loss.backward()
@@ -119,21 +122,36 @@ class BaseTrainer:
                 break
             progress_bar.update(1)
 
-    def train_online(self):
-        timestamps = self.train_dataset.ENV[:-1]
-        if self.args.online_timesteps:
-            timestamps = self.args.eval_fixed_timesteps
-        if self.args.last_k_timesteps:
-            num_timestamps = math.ceil(self.args.last_k_timesteps * len(timestamps))
-            timestamps = timestamps[-num_timestamps:]
+    def filter_timestamps(self, timestamps):
+        train_timestamps, eval_timestamps = [], []
+        for i, timestamp in enumerate(timestamps):
+            if timestamp < self.split_time:
+                train_timestamps.append(timestamp)
+            else:
+                eval_timestamps.append(timestamp)
+
         if self.args.timestep_stride:
-            timestamps = timestamps[::self.args.timestep_stride]
+            train_timestamps = train_timestamps[::self.args.timestep_stride]
+        if self.args.online_timesteps:
+            train_timestamps = self.args.eval_fixed_timesteps
+        if self.args.last_k_timesteps:
+            num_timestamps = math.ceil(
+                self.args.last_k_timesteps * len(train_timestamps))
+            train_timestamps = train_timestamps[-num_timestamps:]
+        if self.args.timestep_stride:
+            train_timestamps = train_timestamps[::self.args.timestep_stride]
 
         if self.args.shuffle_timesteps:
-            shuffle(timestamps)
+            shuffle(train_timestamps)
+
+        timestamps = train_timestamps + eval_timestamps
+        return timestamps
+
+    def train_online(self):
+        timestamps = self.train_dataset.ENV[:-1]
+        timestamps = self.filter_timestamps(timestamps)
 
         for i, timestamp in enumerate(timestamps):
-
             logger.info(f"Training at timestamp: {timestamp}")
             if self.args.load_model and self.model_path_exists(timestamp):
                 self.load_model(timestamp)
@@ -147,19 +165,19 @@ class BaseTrainer:
                                                       num_workers=self.num_workers, collate_fn=self.train_collate_fn)
                 self.train_step(train_dataloader, self.args.online_steps)
                 self.save_model(timestamp)
-                if self.args.method in ['coral', 'groupdro', 'irm', 'erm']:
+                if (not self.args.eval_warmstart_finetune and
+                        self.args.method in ['coral', 'groupdro', 'irm', 'erm']):
                     self.train_dataset.update_historical(i + 1, data_del=True)
 
             if (self.args.eval_fix or self.args.eval_warmstart_finetune) and timestamp == self.split_time:
                 break
 
+
     def train_offline(self):
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
 
-        if self.args.timestep_stride:
-            timestamps = timesteps[::self.args.timestep_stride]
-
+        timestamps = self.filter_timestamps(self.train_dataset.ENV)
         for i, timestamp in enumerate(timestamps):
             if timestamp < self.split_time:
                 self.train_dataset.mode = 0
@@ -179,7 +197,8 @@ class BaseTrainer:
                 if self.args.load_model:
                     self.load_model(timestamp)
                 else:
-                    self.train_step(train_id_dataloader, self.args.offline_steps)
+                    self.train_step(train_id_dataloader,
+                                    self.args.offline_steps)
                     self.save_model("offline")
                 break
 
@@ -204,7 +223,8 @@ class BaseTrainer:
                 else:
                     pred = F.softmax(logits, dim=1).argmax(dim=1)
 
-                pred_all = list(pred_all) + pred.detach().cpu().numpy().tolist()
+                pred_all = list(pred_all) + \
+                    pred.detach().cpu().numpy().tolist()
                 y_all = list(y_all) + y.cpu().numpy().tolist()
 
         if self.args.dataset == 'drug':
@@ -213,7 +233,7 @@ class BaseTrainer:
         else:
             pred_all = np.array(pred_all)
             y_all = np.array(y_all)
-            if self.args.dataset == 'mimic' and self.args.prediction_type == 'mortality':
+            if 'mimic' in self.args.dataset and self.args.prediction_type == 'mortality':
                 metric = metrics.roc_auc_score(y_all, pred_all)
             else:
                 correct = (pred_all == y_all).sum().item()
@@ -248,7 +268,6 @@ class BaseTrainer:
         labels_all = torch.cat(labels_all, dim=0)
         return features_all, preds_all, labels_all
 
-
     def evaluate_stream(self, start):
         self.network.eval()
         metrics = []
@@ -260,7 +279,8 @@ class BaseTrainer:
             metric = self.network_evaluation(test_time_dataloader)
             metrics.append(metric)
 
-        avg_metric, worst_metric, best_metric = np.mean(metrics), np.min(metrics), np.max(metrics)
+        avg_metric, worst_metric, best_metric = np.mean(
+            metrics), np.min(metrics), np.max(metrics)
 
         logger.info(
             f'Timestamp = {start - 1}'
@@ -274,31 +294,36 @@ class BaseTrainer:
         return avg_metric, worst_metric, best_metric
 
     def extract_features(self):
-        logger.info(f'\n=================================== Results (Eval-Features) ===================================')
+        logger.info(
+            f'\n=================================== Results (Eval-Features) ===================================')
         self.network.eval()
         features_by_time, preds_by_time, labels_by_time, projections_by_time, timestamps = {}, {}, {}, {}, {}
 
         for i, _ in enumerate(self.eval_dataset.ENV):
             self.eval_dataset.update_current_timestamp(i)
             test_time_dataloader = FastDataLoader(dataset=self.eval_dataset, batch_size=self.eval_batch_size,
-                                                num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+                                                  num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
 
-            features, preds, labels = self.network_featurize(test_time_dataloader)
+            features, preds, labels = self.network_featurize(
+                test_time_dataloader)
 
             features_by_time[i] = features
             preds_by_time[i] = preds
             labels_by_time[i] = labels
             timestamps[i] = i * torch.ones_like(labels)
-            U, S, V = torch.pca_lowrank(features, q=self.args.feat_num_components)
+            U, S, V = torch.pca_lowrank(
+                features, q=self.args.feat_num_components)
             projections_by_time[i] = features @ V
 
         timestamps_all = torch.cat(list(timestamps.values()), dim=0)
         features_all = torch.cat(list(features_by_time.values()), dim=0)
-        U_all, S_all, V_all = torch.pca_lowrank(features_all, q=self.args.feat_num_components)
+        U_all, S_all, V_all = torch.pca_lowrank(
+            features_all, q=self.args.feat_num_components)
         projections_all = features_all @ V_all
 
     def evaluate_online(self):
-        logger.info(f'\n=================================== Results (Eval-Stream) ===================================')
+        logger.info(
+            f'\n=================================== Results (Eval-Stream) ===================================')
         logger.info(f'Metric: {self.eval_metric}\n')
         end = len(self.eval_dataset.ENV) - self.eval_next_timestamps
         for i, timestamp in enumerate(self.eval_dataset.ENV[:end]):
@@ -309,7 +334,8 @@ class BaseTrainer:
             self.best_time_accuracies[timestamp] = best_metric
 
     def evaluate_offline(self):
-        logger.info(f'\n=================================== Results (Eval-Fix) ===================================')
+        logger.info(
+            f'\n=================================== Results (Eval-Fix) ===================================')
         logger.info(f'Metric: {self.eval_metric}\n')
         timestamps = self.eval_dataset.ENV
         metrics = []
@@ -333,14 +359,16 @@ class BaseTrainer:
                                                      batch_size=self.eval_batch_size,
                                                      num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
                 acc = self.network_evaluation(test_ood_dataloader)
-                logger.info(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
+                logger.info(
+                    f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
                 metrics.append(acc)
         logger.info(f'\nOOD Average Metric: \t{np.mean(metrics)}'
-              f'\nOOD Worst Metric: \t{np.min(metrics)}'
-              f'\nAll OOD Metrics: \t{metrics}\n')
+                    f'\nOOD Worst Metric: \t{np.min(metrics)}'
+                    f'\nAll OOD Metrics: \t{metrics}\n')
 
     def evaluate_offline_all_timestamps(self):
-        logger.info(f'\n=================================== Results (Eval-Fix) ===================================')
+        logger.info(
+            f'\n=================================== Results (Eval-Fix) ===================================')
         timestamps = self.train_dataset.ENV
         metrics = []
         for i, timestamp in enumerate(timestamps):
@@ -358,14 +386,16 @@ class BaseTrainer:
                                                      batch_size=self.eval_batch_size,
                                                      num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
                 metric = self.network_evaluation(test_ood_dataloader)
-            logger.info(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {metric}')
+            logger.info(
+                f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {metric}')
             metrics.append(metric)
         logger.info(f'\nAverage Metric Across All Timestamps: \t{np.mean(metrics)}'
-              f'\nWorst Metric Across All Timestamps: \t{np.min(metrics)}'
-              f'\nMetrics Across All Timestamps: \t{metrics}\n')
+                    f'\nWorst Metric Across All Timestamps: \t{np.min(metrics)}'
+                    f'\nMetrics Across All Timestamps: \t{metrics}\n')
 
     def run_eval_fix(self):
-        logger.info('==========================================================================================')
+        logger.info(
+            '==========================================================================================')
         logger.info("Running Eval-Fix...\n")
         if self.args.method in ['agem', 'ewc', 'ft', 'si']:
             self.train_online()
@@ -377,7 +407,8 @@ class BaseTrainer:
             self.evaluate_offline()
 
     def run_task_difficulty(self):
-        logger.info('==========================================================================================')
+        logger.info(
+            '==========================================================================================')
         logger.info("Running Task Difficulty...\n")
         timestamps = self.train_dataset.ENV
         metrics = []
@@ -403,25 +434,26 @@ class BaseTrainer:
                                                  batch_size=self.eval_batch_size,
                                                  num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
             metric = round(self.network_evaluation(test_ood_dataloader), 2)
-            logger.info(f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {metric}')
+            logger.info(
+                f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {metric}')
             metrics.append(metric)
         logger.info(f'Average Metric: {np.mean(metrics)}')
         logger.info(f'Worst timestamp accuracy: {np.min(metrics)}')
         logger.info(f'All timestamp accuracies: {metrics}')
 
     def run_eval_stream(self):
-        logger.info('==========================================================================================')
+        logger.info(
+            '==========================================================================================')
         logger.info("Running Eval-Stream...\n")
         if not self.args.load_model:
             self.train_online()
         self.evaluate_online()
 
-
     def run_warmstart_finetune(self):
         # Initialize with general supervised training
         self.train_offline()
 
-       ## Reset to online dataset
+       # Reset to online dataset)
         self.train_dataset = reinit_dataset(self.args)
 
         # Continual train on each timestamp
@@ -462,7 +494,6 @@ class BaseTrainer:
             self.evaluate_online()
         runtime = time.time() - start_time
         logger.info(f'Runtime: {runtime:.2f}\n')
-
 
     def get_model_path(self, timestamp):
         model_str = f'time_{timestamp}.pth'

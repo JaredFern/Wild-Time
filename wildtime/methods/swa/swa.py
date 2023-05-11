@@ -39,8 +39,7 @@ class SWA(BaseTrainer):
 
     def train_offline(self):
         timesteps = self.train_dataset.ENV
-        if self.args.timestep_stride:
-            timesteps = timesteps[::self.args.timestep_stride]
+        timesteps = self.filter_timestamps(timesteps)
 
         for i, t in enumerate(timesteps):
             if t < self.split_time: # , self.args.warmstart_split_time):
@@ -77,23 +76,8 @@ class SWA(BaseTrainer):
 
     def train_online(self):
         self.swa_scheduler.step()
-        if self.args.eval_fix or self.args.eval_warmstart_finetune:
-            split_idx = self.train_dataset.ENV.index(self.split_time)
-            timestamps = self.train_dataset.ENV[:split_idx + 1]
-        else:
-            timestamps = self.train_dataset.ENV[:-1]
-
-        if self.args.online_timesteps:
-            timestamps = self.args.eval_fixed_timesteps
-        if self.args.last_k_timesteps:
-            num_timestamps = math.ceil(self.args.last_k_timesteps * len(timestamps))
-            timestamps = timestamps[-num_timestamps:]
-        if self.args.shuffle_timesteps:
-            shuffle(timestamps)
-
-        timestamps  = self.train_dataset.ENV
-        if self.args.timestep_stride:
-            timestamps = timestamps[::self.args.timestep_stride]
+        timestamps = self.train_dataset.ENV [:-1]
+        timestamps = self.filter_timestamps(timestamps)
 
         for i, t in enumerate(timestamps):
             logger.info(f"Training at timestamp {t}")

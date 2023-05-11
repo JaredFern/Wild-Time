@@ -176,7 +176,6 @@ def init(args):
     dataset, criterion, network, optimizer, scheduler = trainer_init(args)
     if args.torch_compile:
         network = torch.compile(network)
-    import ipdb; ipdb.set_trace()
     if args.sam:
         optimizer = SAM(network.parameters(), optimizer, rho=args.sam_rho, adaptive=False)
     method_dict = {

@@ -1,0 +1,59 @@
+/var/spool/slurmd/job615269/slurm_script: line 18: activate: No such file or directory
+2023-05-11 10:49:33,594 - root - INFO - Namespace(K=1, buffer_size=1000, checkpoint_path=None, config_file=None, contour_granularity=5, contour_increment=0.01, contour_margin=0.1, contour_metric='losses', contour_models=None, contour_timesteps=None, coral_lambda=1.0, cut_mix=False, data_dir='/projects/tir6/strubell/data/wilds/data', dataset='mimic_mortality', device=0, difficulty=False, emp_FI=False, epsilon=0.001, eval=False, eval_all_timestamps=False, eval_batch_size=512, eval_features=False, eval_fix=True, eval_fixed_timesteps=[], eval_next_timestamps=1, eval_stream=False, eval_warmstart_finetune=False, ewc_lambda=1.0, ewc_task_decay=1.0, exp_name='0511_mimic_mortality_erm_erm_baseline', exp_path='/projects/tir6/strubell/jaredfer/projects/wild-time/results/0511_mimic_mortality_erm_erm_baseline_2', feat_num_components=50, feat_num_samples=100, feat_split='test', feat_threshold=0.1, fisher_n=None, gamma=1.0, group_size=1, interpolation_granularity=5, interpolation_metric='losses', interpolation_models=None, interpolation_plots=False, interpolation_timesteps=None, irm_lambda=1.0, irm_penalty_anneal_iters=0, last_k_timesteps=1, linear_probe=False, linear_probe_iter=None, lisa=False, lisa_intra_domain=False, lisa_start_time=0, load_model=False, log_dir='/projects/tir6/strubell/jaredfer/projects/wild-time/results', loss_contours=False, lr=0.0005, method='erm', mini_batch_size=128, mix_alpha=2.0, mixup=False, model_path='/projects/tir6/strubell/jaredfer/projects/wild-time/results/0511_mimic_mortality_erm_erm_baseline_2/checkpoints', momentum=0.9, non_overlapping=False, num_groups=4, num_workers=8, offline_steps=3000, online=False, online_steps=250, online_timesteps=[], prediction_type='mortality', random_seed=2, reduced_train_prop=None, reduction='mean', regression=False, results_dir='/projects/tir6/strubell/jaredfer/projects/wild-time/results', sam=False, sam_rho=0.05, shuffle_timesteps=False, si_c=0.1, split_time=2011, ssl_finetune_iter=0, swa_ewa=False, swa_ewa_lambda=0.5, swa_steps=None, time_conditioned=False, timestep_stride=1, torch_compile=False, train=True, train_update_iter=3000, warmstart_split_time=None, weight_decay=0.0)
+2023-05-11 10:49:33,595 - wildtime.methods.base_trainer - INFO - ==========================================================================================
+2023-05-11 10:49:33,595 - wildtime.methods.base_trainer - INFO - Running Eval-Fix...
+
+Traceback (most recent call last):
+  File "main.py", line 245, in <module>
+    trainer.run()
+  File "/home/jaredfer/Projects/Year3/Wild-Time/wildtime/methods/base_trainer.py", line 459, in run
+    self.run_eval_fix()
+  File "/home/jaredfer/Projects/Year3/Wild-Time/wildtime/methods/base_trainer.py", line 388, in run_eval_fix
+    self.train_offline()
+  File "/home/jaredfer/Projects/Year3/Wild-Time/wildtime/methods/base_trainer.py", line 165, in train_offline
+    timestamps = timesteps[::self.args.timestep_stride]
+NameError: name 'timesteps' is not defined
+usage: main.py [-h] [--train] [--eval] [--loss_contours]
+               [--interpolation_plots]
+               [--dataset {rmnist,arxiv,huffpost,fmow,yearbook,mimic_mortality,mimic_readmission}]
+               [--method {erm,ft,ewc,si,irm,coral,groupdro,agem,simclr,swav,swa}]
+               [--random_seed RANDOM_SEED] [--config_file CONFIG_FILE]
+               [--exp_name EXP_NAME] [--exp_path EXP_PATH] [--torch_compile]
+               [--offline_steps OFFLINE_STEPS] [--online_steps ONLINE_STEPS]
+               [--eval_fix] [--eval_stream] [--eval_warmstart_finetune]
+               [--eval_features] [--eval_fixed_timesteps EVAL_FIXED_TIMESTEPS]
+               [--shuffle_timesteps] [--online_timesteps ONLINE_TIMESTEPS]
+               [--last_k_timesteps LAST_K_TIMESTEPS]
+               [--warmstart_split_time WARMSTART_SPLIT_TIME]
+               [--timestep_stride TIMESTEP_STRIDE] [--swa_ewa]
+               [--swa_steps SWA_STEPS] [--swa_ewa_lambda SWA_EWA_LAMBDA]
+               [--ewc_task_decay EWC_TASK_DECAY] [--sam] [--sam_rho SAM_RHO]
+               [--contour_timesteps CONTOUR_TIMESTEPS]
+               [--contour_models CONTOUR_MODELS CONTOUR_MODELS CONTOUR_MODELS]
+               [--contour_granularity CONTOUR_GRANULARITY]
+               [--contour_margin CONTOUR_MARGIN]
+               [--contour_increment CONTOUR_INCREMENT]
+               [--interpolation_timesteps INTERPOLATION_TIMESTEPS [INTERPOLATION_TIMESTEPS ...]]
+               [--interpolation_models INTERPOLATION_MODELS INTERPOLATION_MODELS]
+               [--interpolation_granularity INTERPOLATION_GRANULARITY]
+main.py: error: argument --offline_steps: expected one argument
+2023-05-11 10:49:58,855 - root - INFO - Namespace(K=1, buffer_size=1000, checkpoint_path=None, config_file=None, contour_granularity=5, contour_increment=0.01, contour_margin=0.1, contour_metric='losses', contour_models=None, contour_timesteps=None, coral_lambda=1.0, cut_mix=False, data_dir='/projects/tir6/strubell/data/wilds/data', dataset='mimic_mortality', device=0, difficulty=False, emp_FI=False, epsilon=0.001, eval=False, eval_all_timestamps=False, eval_batch_size=512, eval_features=False, eval_fix=False, eval_fixed_timesteps=[], eval_next_timestamps=1, eval_stream=False, eval_warmstart_finetune=True, ewc_lambda=1.0, ewc_task_decay=1.0, exp_name='0511_mimic_mortality_erm_ft', exp_path='/projects/tir6/strubell/jaredfer/projects/wild-time/results/0511_mimic_mortality_erm_ft_2', feat_num_components=50, feat_num_samples=100, feat_split='test', feat_threshold=0.1, fisher_n=None, gamma=1.0, group_size=1, interpolation_granularity=5, interpolation_metric='losses', interpolation_models=None, interpolation_plots=False, interpolation_timesteps=None, irm_lambda=1.0, irm_penalty_anneal_iters=0, last_k_timesteps=1, linear_probe=False, linear_probe_iter=None, lisa=False, lisa_intra_domain=False, lisa_start_time=0, load_model=False, log_dir='/projects/tir6/strubell/jaredfer/projects/wild-time/results', loss_contours=False, lr=0.0005, method='erm', mini_batch_size=128, mix_alpha=2.0, mixup=False, model_path='/projects/tir6/strubell/jaredfer/projects/wild-time/results/0511_mimic_mortality_erm_ft_2/checkpoints', momentum=0.9, non_overlapping=False, num_groups=4, num_workers=8, offline_steps=0, online=False, online_steps=3000, online_timesteps=[], prediction_type='mortality', random_seed=2, reduced_train_prop=None, reduction='mean', regression=False, results_dir='/projects/tir6/strubell/jaredfer/projects/wild-time/results', sam=False, sam_rho=0.05, shuffle_timesteps=False, si_c=0.1, split_time=2011, ssl_finetune_iter=0, swa_ewa=False, swa_ewa_lambda=0.5, swa_steps=None, time_conditioned=False, timestep_stride=1, torch_compile=False, train=True, train_update_iter=3000, warmstart_split_time=None, weight_decay=0.0)
+Traceback (most recent call last):
+  File "main.py", line 245, in <module>
+    trainer.run()
+  File "/home/jaredfer/Projects/Year3/Wild-Time/wildtime/methods/base_trainer.py", line 461, in run
+    self.run_warmstart_finetune()
+  File "/home/jaredfer/Projects/Year3/Wild-Time/wildtime/methods/base_trainer.py", line 439, in run_warmstart_finetune
+    self.train_offline()
+  File "/home/jaredfer/Projects/Year3/Wild-Time/wildtime/methods/base_trainer.py", line 165, in train_offline
+    timestamps = timesteps[::self.args.timestep_stride]
+NameError: name 'timesteps' is not defined
+2023-05-11 10:50:18,005 - root - INFO - Namespace(K=1, buffer_size=1000, checkpoint_path=None, config_file=None, contour_granularity=5, contour_increment=0.01, contour_margin=0.1, contour_metric='losses', contour_models=None, contour_timesteps=None, coral_lambda=1.0, cut_mix=False, data_dir='/projects/tir6/strubell/data/wilds/data', dataset='mimic_mortality', device=0, difficulty=False, emp_FI=False, epsilon=0.001, eval=False, eval_all_timestamps=False, eval_batch_size=512, eval_features=False, eval_fix=True, eval_fixed_timesteps=[], eval_next_timestamps=1, eval_stream=False, eval_warmstart_finetune=False, ewc_lambda=0.5, ewc_task_decay=1.0, exp_name='0511_mimic_mortality_ewc_eval_fix', exp_path='/projects/tir6/strubell/jaredfer/projects/wild-time/results/0511_mimic_mortality_ewc_eval_fix_4', feat_num_components=50, feat_num_samples=100, feat_split='test', feat_threshold=0.1, fisher_n=None, gamma=1.0, group_size=1, interpolation_granularity=5, interpolation_metric='losses', interpolation_models=None, interpolation_plots=False, interpolation_timesteps=None, irm_lambda=1.0, irm_penalty_anneal_iters=0, last_k_timesteps=1, linear_probe=False, linear_probe_iter=None, lisa=False, lisa_intra_domain=False, lisa_start_time=0, load_model=False, log_dir='/projects/tir6/strubell/jaredfer/projects/wild-time/results', loss_contours=False, lr=0.0005, method='ewc', mini_batch_size=128, mix_alpha=2.0, mixup=False, model_path='/projects/tir6/strubell/jaredfer/projects/wild-time/results/0511_mimic_mortality_ewc_eval_fix_4/checkpoints', momentum=0.9, non_overlapping=False, num_groups=4, num_workers=8, offline_steps=3000, online=True, online_steps=500, online_timesteps=[], prediction_type='mortality', random_seed=2, reduced_train_prop=None, reduction='mean', regression=False, results_dir='/projects/tir6/strubell/jaredfer/projects/wild-time/results', sam=False, sam_rho=0.05, shuffle_timesteps=False, si_c=0.1, split_time=2011, ssl_finetune_iter=0, swa_ewa=False, swa_ewa_lambda=0.5, swa_steps=None, time_conditioned=False, timestep_stride=1, torch_compile=False, train=True, train_update_iter=3000, warmstart_split_time=None, weight_decay=0.0)
+2023-05-11 10:50:18,005 - wildtime.methods.base_trainer - INFO - ==========================================================================================
+2023-05-11 10:50:18,005 - wildtime.methods.base_trainer - INFO - Running Eval-Fix...
+
+2023-05-11 10:50:18,005 - wildtime.methods.base_trainer - INFO - Training at timestamp: 2008
+2023-05-11 10:52:18,610 - wildtime.methods.base_trainer - INFO - Saving model at timestamp 2008 to path /projects/tir6/strubell/jaredfer/projects/wild-time/results/0511_mimic_mortality_ewc_eval_fix_4/checkpoints/time_2008.pth.
+
+2023-05-11 10:52:18,610 - wildtime.methods.base_trainer - INFO - Training at timestamp: 2011
+slurmstepd: error: *** JOB 615269 ON tir-0-15 CANCELLED AT 2023-05-11T10:53:47 ***

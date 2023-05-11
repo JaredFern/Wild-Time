@@ -5,6 +5,7 @@ import time
 import numpy as np
 import torch
 import torch.nn.functional as F
+from tqdm import tqdm
 from sklearn import metrics
 from tdc import Evaluator
 
@@ -72,6 +73,7 @@ class BaseTrainer:
     def train_step(self, dataloader):
         self.network.train()
         loss_all = []
+        progress_bar = tqdm(total = self.train_update_iter)
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
             loss, logits, y = forward_pass(x, y, self.train_dataset, self.network, self.criterion, self.lisa, self.mixup,
@@ -84,6 +86,7 @@ class BaseTrainer:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 break
+            progress_bar.update(1)
 
     def train_online(self):
         for i, timestamp in enumerate(self.train_dataset.ENV[:-1]):
@@ -107,6 +110,7 @@ class BaseTrainer:
     def train_offline(self):
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
+        import ipdb; ipdb.set_trace()
         for i, timestamp in enumerate(self.train_dataset.ENV):
             if timestamp < self.split_time:
                 self.train_dataset.mode = 0

@@ -34,7 +34,6 @@ class EWC(BaseTrainer):
         super().__init__(args, dataset, network, criterion, optimizer, scheduler)
         self.args = args
         self.ewc_lambda = args.ewc_lambda   #-> hyperparam: how strong to weigh EWC-loss ("regularization strength")
-        self.EWC_task_count = 0             #-> keeps track of number of quadratic loss terms (for "offline EWC")
         self.gamma = args.gamma             #-> hyperparam (online EWC): decay-term for old tasks' contribution to quadratic term
         self.online = args.online           #-> "online" (=single quadratic term) or "offline" (=quadratic term per task) EWC
         self.fisher_n = args.fisher_n       #-> sample size for estimating FI-matrix (if "None", full pass over dataset)
@@ -149,7 +148,7 @@ class EWC(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            if step == self.train_update_iter:
+            if step == train_steps:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 self.estimate_fisher()

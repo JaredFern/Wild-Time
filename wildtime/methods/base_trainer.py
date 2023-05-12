@@ -397,6 +397,7 @@ class BaseTrainer:
         logger.info(
             '==========================================================================================')
         logger.info("Running Eval-Fix...\n")
+        import ipdb; ipdb.set_trace()
         if self.args.method in ['agem', 'ewc', 'ft', 'si']:
             self.train_online()
         else:

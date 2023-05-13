@@ -124,6 +124,7 @@ if __name__ == '__main__':
     # Experimental Parameters
     parser.add_argument('--swa_ewa', action='store_true')
     parser.add_argument('--swa_steps', default=None)
+    parser.add_argument('--swa_load_from_checkpoint', action='store_true')
     parser.add_argument('--swa_ewa_lambda', type=float, default=0.5)
     parser.add_argument('--ewc_task_decay', type=float, default=1.0)
     parser.add_argument('--sam', action='store_true')
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     experimental_params = {
         'device': 0,
         'random_seed': 0,
-        'num_workers': 8,
+        'num_workers': 16,
         # 'mini_batch_size': 128,
         'eval_batch_size': 512,
         'linear_probe_iter': None,

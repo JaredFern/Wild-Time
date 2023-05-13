@@ -4,7 +4,8 @@ import math
 import os
 
 import torch
-from ..dataloaders import InfiniteDataLoader
+from tqdm import tqdm
+from ..dataloaders import FastDataLoader,InfiniteDataLoader
 from ..base_trainer import BaseTrainer
 # from torchcontrib.optim import SWA as SWA_optimizer
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
@@ -35,11 +36,30 @@ class SWA(BaseTrainer):
         else:
             self.swa_model = AveragedModel(self.network)
 
+        if args.swa_load_from_checkpoint:
+            model_path = os.path.join(self.args.results_dir, self.args.exp_path, 'checkpoints')
+            logger.info(f"Building SWA Models from {model_path}")
+            init_weights = torch.load(os.path.join(model_path, f'time_{self.train_dataset[ENV][0]}.pth'))
+            self.network.load_state_dict(init_weights)
+
+            self.swa_model = AveragedModel(self.network, avg_fn=ema_avg)
+            self.swa_model.update_parameters(self.network)
+
+            for timestep in tqdm(self.train_dataset.ENV[1:]):
+                ckpt_path = os.path.join(model_path, f'time_{timestep}.pth')
+                weights = torch.load(ckpt_path)
+                self.network.load_state_dict(weights)
+                self.swa_model.update_parameters(self.network)
+                if timestep == self.split_time:
+                    break
+
+
         self.results_file = os.path.join(args.results_dir, f'{str(dataset)}-{str(self)}.pkl')
 
     def train_offline(self):
         timesteps = self.train_dataset.ENV
         timesteps = self.filter_timestamps(timesteps)
+
 
         for i, t in enumerate(timesteps):
             if t < self.split_time: # , self.args.warmstart_split_time):
@@ -96,7 +116,6 @@ class SWA(BaseTrainer):
                 self.train_step(train_dataloader, self.args.online_steps)
                 logger.info("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
-                # update_bn(train_dataloader, self.swa_model, device=self.args.device)
                 self.save_model(t)
                 self.save_swa_model(t)
 

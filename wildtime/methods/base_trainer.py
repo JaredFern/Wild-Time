@@ -6,6 +6,7 @@ import time
 from random import shuffle
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -138,8 +139,6 @@ class BaseTrainer:
             num_timestamps = math.ceil(
                 self.args.last_k_timesteps * len(train_timestamps))
             train_timestamps = train_timestamps[-num_timestamps:]
-        if self.args.timestep_stride:
-            train_timestamps = train_timestamps[::self.args.timestep_stride]
 
         if self.args.shuffle_timesteps:
             shuffle(train_timestamps)
@@ -150,7 +149,6 @@ class BaseTrainer:
     def train_online(self):
         timestamps = self.train_dataset.ENV[:-1]
         timestamps = self.filter_timestamps(timestamps)
-
         for i, timestamp in enumerate(timestamps):
             logger.info(f"Training at timestamp: {timestamp}")
             if self.args.load_model and self.model_path_exists(timestamp):
@@ -165,8 +163,9 @@ class BaseTrainer:
                                                       num_workers=self.num_workers, collate_fn=self.train_collate_fn)
                 self.train_step(train_dataloader, self.args.online_steps)
                 self.save_model(timestamp)
-                if (not self.args.eval_warmstart_finetune and
-                        self.args.method in ['coral', 'groupdro', 'irm', 'erm']):
+                if (
+                    # not self.args.eval_warmstart_finetune and
+                    self.args.method in ['coral', 'groupdro', 'irm', 'erm']):
                     self.train_dataset.update_historical(i + 1, data_del=True)
 
             if (self.args.eval_fix or self.args.eval_warmstart_finetune) and timestamp == self.split_time:
@@ -362,6 +361,22 @@ class BaseTrainer:
                 logger.info(
                     f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
                 metrics.append(acc)
+
+
+        results_fname = os.path.join(self.args.results_dir, self.args.dataset + "_fix.csv")
+        results_df = pd.DataFrame({
+            'exp_name': self.args.exp_path,
+            'offline_steps': self.args.offline_steps,
+            'online_steps': self.args.online_steps,
+            'eval_fix': self.args.eval_fix,
+            'eval_warmstart_finetune': self.args.eval_warmstart_finetune,
+            'method': self.args.method,
+            'seed': self.args.random_seed,
+            'avg_ood': np.mean(metrics),
+            'worst_ood': np.min(metrics)
+        }, index=[0])
+        results_df.to_csv(results_fname, mode='a', index=False, header=False)
+
         logger.info(f'\nOOD Average Metric: \t{np.mean(metrics)}'
                     f'\nOOD Worst Metric: \t{np.min(metrics)}'
                     f'\nAll OOD Metrics: \t{metrics}\n')
@@ -489,7 +504,7 @@ class BaseTrainer:
         torch.cuda.empty_cache()
         start_time = time.time()
 
-        if self.args.eval_fix:
+        if self.args.eval_fix or self.args.eval_warmstart_finetune:
             self.evaluate_offline()
         if self.args.eval_stream:
             self.evaluate_online()

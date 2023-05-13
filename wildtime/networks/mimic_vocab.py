@@ -29,14 +29,14 @@ class Vocabulary(object):
 
 def vocab_construction(all_words, output_filename):
     vocab = Vocabulary()
-    for word in all_words:
+    for word in sorted(all_words):
         vocab.add_word(word)
     logger.info(f"Vocab len:", len(vocab))
 
     # sanity check
     assert set(vocab.word2idx.keys()) == set(vocab.idx2word.values())
     assert set(vocab.word2idx.values()) == set(vocab.idx2word.keys())
-    for word in vocab.word2idx.keys():
+    for word in sorted(vocab.word2idx.keys()):
         assert word == vocab.idx2word[vocab(word)]
 
     pickle.dump(vocab, open(output_filename, 'wb'))
@@ -45,7 +45,7 @@ def vocab_construction(all_words, output_filename):
 def build_vocab_mimic(data_dir):
     all_icu_stay_dict = pickle.load(open(os.path.join(data_dir, 'mimic_stay_dict.pkl'),'rb'))
     all_codes = []
-    for icu_id in all_icu_stay_dict.keys():
+    for icu_id in sorted(all_icu_stay_dict.keys()):
         for code in all_icu_stay_dict[icu_id].treatment:
             all_codes.append(code)
         for code in all_icu_stay_dict[icu_id].diagnosis:

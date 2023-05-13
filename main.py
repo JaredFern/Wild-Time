@@ -136,6 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('--contour_granularity', type=int, default=5)
     parser.add_argument('--contour_margin', type=float, default=0.1)
     parser.add_argument('--contour_increment', type=float, default=0.01)
+    parser.add_argument('--contour_additional_models', nargs='+')
 
     # Interpolation Parameters
     parser.add_argument('--interpolation_timesteps', nargs='+', type=int)
@@ -253,10 +254,7 @@ if __name__ == '__main__':
             labels = contour_data['model_ids']
         else:
             labels = ['w_0', 'w_1', 'w_2']
-    if configs.interpolation_plots:
-        interpolation_data = interpolation_plots.generate_interpolation_plots(configs, trainer)
-        print(interpolation_data)
-
+        
         loss_landscape.plot_contour(
             contour_data['grid'],
             contour_data[configs.contour_metric],
@@ -265,8 +263,13 @@ if __name__ == '__main__':
             contour_dir,
             contour_data['title'],
             configs.contour_increment,
-            configs.contour_margin
+            configs.contour_margin,
+            additional_coords=contour_data['additional_coords'],
+            additional_labels=contour_data['additional_model_ids'],
         )
+    if configs.interpolation_plots:
+        interpolation_data = interpolation_plots.generate_interpolation_plots(configs, trainer)
+        print(interpolation_data)
 
     # todo: When using a dictionary to store classes, each class will be instantiated and there will be incompatible datasets and methods
     # if configs.method in ['coral', 'groupdro', 'irm']:

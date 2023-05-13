@@ -43,12 +43,25 @@ def generate_loss_contours(args, trainer):
 
             model.load_state_dict(weights, strict=False)
             model.to(args.device)
+        
+        additional_models = None
+        if args.contour_additional_models:
+            additional_models = [deepcopy(models[0]) for _ in args.contour_additional_models]
+            for model, ckpt in zip(additional_models, args.contour_additional_models):
+                weights = torch.load(os.path.join(args.model_path, f"time_{ckpt}.pth"))
+                # NOTE: ALL ADDITIONAL MODELS ARE ASSUMED TO BE SWA MODELS
+                # for key in list(weights.keys()):
+                #     weights["module." + key] = weights.pop(key)
+
+                model.load_state_dict(weights, strict=False)
+                model.to(args.device)
 
         eval_fn = create_eval_fn()
         contours = calculate_loss_contours(
             models[0], models[1], models[2],
             dataloader, eval_fn, args.device,
-            granularity=args.contour_granularity, model_ids=args.contour_models, method=args.method)
+            granularity=args.contour_granularity, model_ids=args.contour_models, method=args.method,
+            additional_models=additional_models, additional_model_ids=args.contour_additional_models)
         contours['title'] = f"{args.dataset} - Time: {timestep} ({args.contour_models})"
 
         model_idxs = [str(idx) for idx in args.contour_models]
@@ -61,7 +74,8 @@ def generate_loss_contours(args, trainer):
 
 
 def calculate_loss_contours(
-    model1, model2, model3, dataloader, eval_fn, device, granularity=20, margin=0.2, model_ids=None, method='erm'
+    model1, model2, model3, dataloader, eval_fn, device, granularity=20, margin=0.2, model_ids=None, method='erm',
+    additional_models=None, additional_model_ids=None
 ):
     """Runs the loss contour analysis.
     Creates plane based on the parameters of 3 models, and computes loss and accuracy
@@ -84,6 +98,11 @@ def calculate_loss_contours(
     w3 = flatten_parameters(model3, method).to(device=device)
     model1 = model1.to(device=device)
 
+    w_addl = []
+    if additional_models is not None:
+        # import ipdb; ipdb.set_trace()
+        w_addl = [flatten_parameters(model, 'swa').to(device=device) for model in additional_models]
+
     # Define x axis
     u = w3 - w1
     dx = torch.norm(u).item()
@@ -97,6 +116,7 @@ def calculate_loss_contours(
 
     # Define grid representing parameters that will be evaluated.
     coords = np.stack(get_xy(p, w1, u, v) for p in [w1, w2, w3])
+    additional_coords = np.stack([get_xy(p, w1, u, v) for p in w_addl]) if len(w_addl) > 0 else None
     alphas = np.linspace(0.0 - margin, 1.0 + margin, granularity)
     betas = np.linspace(0.0 - margin, 1.0 + margin, granularity)
     losses = np.zeros((granularity, granularity))
@@ -120,9 +140,11 @@ def calculate_loss_contours(
     return {
         "grid": grid,
         "coords": coords,
+        "additional_coords": additional_coords,
         "losses": losses,
         "accuracies": accuracies,
-        "model_ids": model_ids
+        "model_ids": model_ids,
+        "additional_model_ids": additional_model_ids
     }
 
 
@@ -136,6 +158,8 @@ def plot_contour(
     increment=0.3,
     margin=0.1,
     cmap="magma_r",
+    additional_coords=None,
+    additional_labels=None,
 ):
     sns.set(style="ticks")
     sns.set_context(
@@ -174,6 +198,11 @@ def plot_contour(
     for idx, coord in enumerate(coords):
         plt.scatter(coord[0], coord[1], marker="o", c="k", s=120, zorder=2)
         plt.text(coord[0] + 0.05, coord[1] + 0.05, labels[idx], fontsize=22)
+    
+    if additional_coords is not None:
+        for idx, coord in enumerate(additional_coords):
+            plt.scatter(coord[0], coord[1], marker="o", c="k", s=120, zorder=2)
+            plt.text(coord[0] + 0.05, coord[1] + 0.05, additional_labels[idx], fontsize=22)
 
     plt.margins(0.0)
     plt.yticks(fontsize=20)

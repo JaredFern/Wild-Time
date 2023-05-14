@@ -142,6 +142,7 @@ class BaseTrainer:
 
         if self.args.shuffle_timesteps:
             shuffle(train_timestamps)
+            self.split_time = train_timestamps[-1]
 
         timestamps = train_timestamps + eval_timestamps
         return timestamps
@@ -170,6 +171,32 @@ class BaseTrainer:
 
             if (self.args.eval_fix or self.args.eval_warmstart_finetune) and timestamp == self.split_time:
                 break
+
+    def train_oracle(self):
+        if self.args.method in ['simclr', 'swav']:
+            self.train_dataset.ssl_training = True
+
+        timestamps = self.filter_timestamps(self.train_dataset.ENV)
+        for i, timestamp in enumerate(timestamps[:-1]):
+            self.train_dataset.mode = 0
+            self.train_dataset.update_current_timestamp(timestamp)
+            self.train_dataset.update_historical(i + 1)
+            self.train_dataset.mode = 1
+            self.train_dataset.update_current_timestamp(timestamp)
+            self.train_dataset.update_historical(i + 1, data_del=True)
+
+        self.train_dataset.mode = 0
+        self.train_dataset.update_current_timestamp(timestamp + 1)
+        if self.args.method in ['simclr', 'swav']:
+            self.train_dataset.ssl_training = True
+        train_id_dataloader = InfiniteDataLoader(dataset=self.train_dataset, weights=None,
+                                                    batch_size=self.mini_batch_size,
+                                                    num_workers=self.num_workers, collate_fn=self.train_collate_fn)
+
+        self.train_step(train_id_dataloader,
+                        self.args.offline_steps)
+        self.save_model("oracle")
+
 
 
     def train_offline(self):
@@ -203,6 +230,9 @@ class BaseTrainer:
 
     def network_evaluation(self, test_time_dataloader):
         self.network.eval()
+        if self.args.method in ['swa']:
+            self.swa_model.eval()
+
         pred_all = []
         y_all = []
         for _, sample in enumerate(test_time_dataloader):
@@ -412,7 +442,6 @@ class BaseTrainer:
         logger.info(
             '==========================================================================================')
         logger.info("Running Eval-Fix...\n")
-        import ipdb; ipdb.set_trace()
         if self.args.method in ['agem', 'ewc', 'ft', 'si']:
             self.train_online()
         else:
@@ -490,6 +519,9 @@ class BaseTrainer:
             self.run_eval_fix()
         elif self.args.eval_warmstart_finetune:
             self.run_warmstart_finetune()
+        elif self.args.eval_oracle:
+            self.train_oracle()
+            self.evaluate_offline()
         elif self.args.eval_features:
             self.run_eval_features()
         elif self.args.eval_fixed_timesteps:

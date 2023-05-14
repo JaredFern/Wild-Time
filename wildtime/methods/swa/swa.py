@@ -30,22 +30,21 @@ class SWA(BaseTrainer):
         self.swa_scheduler = SWALR(self.optimizer, swa_lr=args.lr, anneal_epochs=1)
 
         if args.swa_ewa:
-            ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: \
+            self.ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: \
                 (1 - args.swa_ewa_lambda) * averaged_model_parameter + args.swa_ewa_lambda * model_parameter
-            self.swa_model = AveragedModel(self.network, avg_fn=ema_avg)
+            self.swa_model = AveragedModel(self.network, avg_fn=self.ema_avg)
         else:
             self.swa_model = AveragedModel(self.network)
+
 
         if args.swa_load_from_checkpoint:
             model_path = os.path.join(self.args.results_dir, self.args.exp_path, 'checkpoints')
             logger.info(f"Building SWA Models from {model_path}")
-            init_weights = torch.load(os.path.join(model_path, f'time_{self.train_dataset[ENV][0]}.pth'))
+            init_weights = torch.load(os.path.join(model_path, f'time_offline.pth'))
             self.network.load_state_dict(init_weights)
+            self.swa_model = AveragedModel(self.network, avg_fn=self. ema_avg)
 
-            self.swa_model = AveragedModel(self.network, avg_fn=ema_avg)
-            self.swa_model.update_parameters(self.network)
-
-            for timestep in tqdm(self.train_dataset.ENV[1:]):
+            for timestep in self.train_dataset.ENV:
                 ckpt_path = os.path.join(model_path, f'time_{timestep}.pth')
                 weights = torch.load(ckpt_path)
                 self.network.load_state_dict(weights)
@@ -78,8 +77,11 @@ class SWA(BaseTrainer):
                     self.load_swa_model(t)
                 else:
                     self.train_step(train_id_dataloader, self.args.offline_steps)
+                    self.swa_model.update_parameters(self.network)
                     # update_bn(train_id_dataloader, self.swa_model, device=self.args.device)
+                    self.swa_model = AveragedModel(self.network, avg_fn=self.ema_avg)
                     self.save_swa_model("offline")
+                    self.save_model("offline")
                 break
 
     def save_swa_model(self, timestamp):

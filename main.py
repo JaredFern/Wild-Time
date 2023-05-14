@@ -112,6 +112,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_stream', action='store_true')
     parser.add_argument('--eval_warmstart_finetune', action='store_true')
     parser.add_argument('--eval_features', action='store_true')
+    parser.add_argument('--eval_oracle', action='store_true')
 
     # Timesteps
     parser.add_argument('--eval_fixed_timesteps', action='append', default=[])

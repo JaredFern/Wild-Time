@@ -28,7 +28,7 @@ class GroupDRO(BaseTrainer):
     def __str__(self):
         return f'GroupDRO-num_groups={self.num_groups}-group_size={self.group_size}-{self.base_trainer_str}'
 
-    def train_step(self, dataloader):
+    def train_step(self, dataloader, train_step):
         self.network.train()
         loss_all = []
         for step, (x, y, g) in enumerate(dataloader):
@@ -44,7 +44,7 @@ class GroupDRO(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            if step == self.train_update_iter:
+            if step == train_step:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 break

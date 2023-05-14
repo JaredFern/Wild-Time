@@ -42,7 +42,7 @@ class IRM(BaseTrainer):
         result = torch.sum(grad_1 * grad_2)
         return result
 
-    def train_step(self, dataloader):
+    def train_step(self, dataloader, train_steps):
         self.network.train()
         loss_all = []
         for step, (x, y, g) in enumerate(dataloader):
@@ -74,7 +74,7 @@ class IRM(BaseTrainer):
             loss.backward()
             self.optimizer.step()
 
-            if step == self.train_update_iter:
+            if step == train_steps:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 break

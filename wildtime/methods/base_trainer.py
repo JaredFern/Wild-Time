@@ -31,12 +31,13 @@ class BaseTrainer:
         self.train_dataset = dataset
         self.train_dataset.ENV = self.train_dataset.ENV
         self.train_dataset.mode = 0
+        self.val_dataset = copy.deepcopy(dataset)
+        self.val_dataset.mode = 1
         self.eval_dataset = copy.deepcopy(dataset)
         self.eval_dataset.mode = 2
         self.num_classes = dataset.num_classes
         self.num_tasks = dataset.num_tasks
-        self.train_collate_fn, self.eval_collate_fn = get_collate_functions(
-            args, self.train_dataset)
+        self.train_collate_fn, self.eval_collate_fn = get_collate_functions(args, self.train_dataset)
 
         # Training hyperparameters
         self.args = args
@@ -54,6 +55,7 @@ class BaseTrainer:
         self.num_workers = args.num_workers
         self.checkpoint_path = args.checkpoint_path
         self.split_time = args.split_time
+        self.train_split_time = args.split_time
         self.eval_next_timestamps = args.eval_next_timestamps
         self.task_accuracies = {}
         self.worst_time_accuracies = {}
@@ -123,10 +125,10 @@ class BaseTrainer:
                 break
             progress_bar.update(1)
 
-    def filter_timestamps(self, timestamps):
+    def filter_timestamps(self, timestamps, online=False):
         train_timestamps, eval_timestamps = [], []
         for i, timestamp in enumerate(timestamps):
-            if timestamp < self.split_time:
+            if timestamp <= self.split_time:
                 train_timestamps.append(timestamp)
             else:
                 eval_timestamps.append(timestamp)
@@ -135,21 +137,20 @@ class BaseTrainer:
             train_timestamps = train_timestamps[::self.args.timestep_stride]
         if self.args.online_timesteps:
             train_timestamps = self.args.eval_fixed_timesteps
-        if self.args.last_k_timesteps:
-            num_timestamps = math.ceil(
-                self.args.last_k_timesteps * len(train_timestamps))
+        if self.args.last_k_timesteps and online:
+            num_timestamps = math.ceil(self.args.last_k_timesteps * len(train_timestamps))
             train_timestamps = train_timestamps[-num_timestamps:]
 
-        if self.args.shuffle_timesteps:
+        if self.args.shuffle_timesteps and online:
             shuffle(train_timestamps)
-            self.split_time = train_timestamps[-1]
+            self.train_split_time = train_timestamps[-1]
 
         timestamps = train_timestamps + eval_timestamps
         return timestamps
 
     def train_online(self):
         timestamps = self.train_dataset.ENV[:-1]
-        timestamps = self.filter_timestamps(timestamps)
+        timestamps = self.filter_timestamps(timestamps, online=True)
         for i, timestamp in enumerate(timestamps):
             logger.info(f"Training at timestamp: {timestamp}")
             if self.args.load_model and self.model_path_exists(timestamp):
@@ -166,10 +167,10 @@ class BaseTrainer:
                 self.save_model(timestamp)
                 if (
                     # not self.args.eval_warmstart_finetune and
-                    self.args.method in ['coral', 'groupdro', 'irm', 'erm']):
+                    self.args.method in ['coral', 'groupdro', 'irm']): # 'erm'
                     self.train_dataset.update_historical(i + 1, data_del=True)
 
-            if (self.args.eval_fix or self.args.eval_warmstart_finetune) and timestamp == self.split_time:
+            if (self.args.eval_fix or self.args.eval_warmstart_finetune) and timestamp == self.train_split_time:
                 break
 
     def train_oracle(self):
@@ -203,7 +204,7 @@ class BaseTrainer:
         if self.args.method in ['simclr', 'swav']:
             self.train_dataset.ssl_training = True
 
-        timestamps = self.filter_timestamps(self.train_dataset.ENV)
+        timestamps = self.filter_timestamps(self.train_dataset.ENV, online=False)
         for i, timestamp in enumerate(timestamps):
             if timestamp < self.split_time:
                 self.train_dataset.mode = 0
@@ -268,6 +269,8 @@ class BaseTrainer:
                 correct = (pred_all == y_all).sum().item()
                 metric = correct / float(y_all.shape[0])
         self.network.train()
+        if self.args.method in ['swa']:
+            self.swa_model.train()
 
         return metric
 
@@ -535,6 +538,13 @@ class BaseTrainer:
     def eval(self):
         torch.cuda.empty_cache()
         start_time = time.time()
+
+        if self.args.eval_lambda:
+            if self.args.method not in ['swa']:
+                assert ValueError("Find lambda only available for CSAW models")
+            return self.find_lambda(num_val_timesteps=self.args.num_val_timesteps,
+                                    step_size=self.args.lambda_step_size)
+
 
         if self.args.eval_fix or self.args.eval_warmstart_finetune:
             self.evaluate_offline()

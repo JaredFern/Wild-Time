@@ -113,8 +113,11 @@ if __name__ == '__main__':
     parser.add_argument('--eval_warmstart_finetune', action='store_true')
     parser.add_argument('--eval_features', action='store_true')
     parser.add_argument('--eval_oracle', action='store_true')
+    parser.add_argument('--eval_lambda', action='store_true')
+    parser.add_argument('--lambda_step_size', type=float, default=0.05)
 
     # Timesteps
+    parser.add_argument('--num_val_timesteps', type=int, default=1)
     parser.add_argument('--eval_fixed_timesteps', action='append', default=[])
     parser.add_argument('--shuffle_timesteps', action='store_true')
     parser.add_argument('--online_timesteps', action='append', default=[])
@@ -148,7 +151,7 @@ if __name__ == '__main__':
     experimental_params = {
         'device': 0,
         'random_seed': 0,
-        'num_workers': 16,
+        'num_workers': 8,
         # 'mini_batch_size': 128,
         'eval_batch_size': 512,
         'linear_probe_iter': None,
@@ -255,7 +258,7 @@ if __name__ == '__main__':
             labels = contour_data['model_ids']
         else:
             labels = ['w_0', 'w_1', 'w_2']
-        
+
         loss_landscape.plot_contour(
             contour_data['grid'],
             contour_data[configs.contour_metric],

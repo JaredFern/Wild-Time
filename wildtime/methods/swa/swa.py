@@ -137,7 +137,6 @@ class SWA(BaseTrainer):
                     val_dataloader = FastDataLoader(
                         dataset=self.val_dataset, batch_size=self.eval_batch_size,
                         num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
-                    logger.info("bN update")
                     update_bn(val_dataloader, self.swa_model, device=self.args.device)
                     metric = self.network_evaluation(val_dataloader)
                     metrics.append(metric)

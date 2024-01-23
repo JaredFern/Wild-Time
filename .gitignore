@@ -6,4 +6,6 @@ checkpoints/
 dist/
 Data/
 logs/
+wandb/
+.vscode/
 wildtime.egg-info/

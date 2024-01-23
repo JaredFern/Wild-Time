@@ -44,11 +44,11 @@ class SWA(BaseTrainer):
             model_path = os.path.join(self.args.results_dir, self.args.exp_path, 'checkpoints')
             if os.path.exists(os.path.join(model_path, 'time_offline_swa.pth')):
                 init_weights = torch.load(os.path.join(model_path, f'time_offline_swa.pth'))
-                self.swa_model.load_state_dict(init_weights)
+                self.swa_model.load_state_dict(init_weights, strict=False)
                 self.swa_model.avg_fn = self.ema_avg
             elif os.path.exists(os.path.join(model_path, 'time_offline.pth')):
                 init_weights = torch.load(os.path.join(model_path, f'time_offline.pth'))
-                self.network.load_state_dict(init_weights)
+                self.network.load_state_dict(init_weights, strict=False)
                 self.swa_model = AveragedModel(self.network, avg_fn=self.ema_avg)
 
             for timestep in self.train_dataset.ENV:
@@ -59,8 +59,8 @@ class SWA(BaseTrainer):
                 if timestep == self.split_time:
                     break
 
-            # Update BN on timestep zero in the train set
-            self.train_dataset.update_current_timestamp(0)
+            # Update BN on last timestep in the train set
+            self.train_dataset.update_current_timestamp(timestep)
             bn_dataloader = FastDataLoader( 
                 dataset=self.train_dataset, batch_size=self.mini_batch_size, num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
             update_bn(bn_dataloader, self.swa_model, device=self.args.device)
@@ -86,7 +86,8 @@ class SWA(BaseTrainer):
                 train_id_dataloader = InfiniteDataLoader(
                     dataset=self.train_dataset, weights=None, batch_size=self.mini_batch_size, num_workers=self.num_workers, collate_fn=self.train_collate_fn)
                 if self.args.load_model:
-                    self.load_swa_model(t)
+                    pass
+                    # self.load_swa_model(t)
                 else:
                     self.train_step(train_id_dataloader, self.args.offline_steps)
                     self.swa_model.update_parameters(self.network)
@@ -101,6 +102,42 @@ class SWA(BaseTrainer):
                     self.save_swa_model("offline")
                     self.save_model("offline")
                 break
+
+    def create_csaw_from_ckpts(self, num_val_timesteps=1, lambda_val=0.50):
+        timesteps = self.train_dataset.ENV
+        ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: \
+            (1 - lambda_val) * averaged_model_parameter + lambda_val * model_parameter
+
+        # Initialize average with the offline checkpoint
+        model_path = os.path.join(self.args.results_dir, self.args.exp_path, 'checkpoints')
+        temp_network = deepcopy(self.network)
+        if os.path.exists(os.path.join(model_path, 'time_offline.pth')):
+            init_weights = torch.load(os.path.join(model_path, f'time_offline.pth'))
+            temp_network.load_state_dict(init_weights)
+            self.swa_model = AveragedModel(temp_network, avg_fn=ema_avg)
+        elif os.path.exists(os.path.join(model_path, 'time_offline_swa.pth')):
+            init_weights = torch.load(os.path.join(model_path, f'time_offline_swa.pth'))
+            self.swa_model.load_state_dict(init_weights)
+            self.swa_model.avg_fn = ema_avg
+
+        metrics = []
+        for i, t in enumerate(self.train_dataset.ENV):
+            # Break on last `num_val_timesteps`
+            if timesteps[i + num_val_timesteps] <= self.split_time:
+                ckpt_path = os.path.join(model_path, f'time_{t}.pth')
+                weights = torch.load(ckpt_path)
+                temp_network.load_state_dict(weights)
+                self.swa_model.update_parameters(temp_network)
+            elif t <= self.split_time:
+                self.val_dataset.mode = 1
+                self.val_dataset.update_current_timestamp(t)
+                val_dataloader = FastDataLoader(
+                    dataset=self.val_dataset, batch_size=self.eval_batch_size,
+                    num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+                update_bn(val_dataloader, self.swa_model, device=self.args.device)
+
+            if t == self.split_time: break
+
 
     def find_lambda(self, num_val_timesteps=1, step_size=0.05):
         # WARNING: NOT COMPATIBLE WITH SHUFFLED INDICES; ASSUME ORDERED DATASETS 

@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
-from tqdm import tqdm
+import wandb
 from sklearn import metrics
 from tdc import Evaluator
 from tqdm import tqdm
@@ -102,6 +102,7 @@ class BaseTrainer:
                 self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
             loss_all.append(loss.item())
             self.optimizer.zero_grad()
+            wandb.log({'train_loss': loss.item()})
             loss.backward()
 
             if self.sam:
@@ -229,14 +230,15 @@ class BaseTrainer:
                     self.save_model("offline")
                 break
 
-    def network_evaluation(self, test_time_dataloader):
+    def network_evaluation(self, test_time_dataloader, return_probs=None):
         self.network.eval()
         if self.args.method in ['swa']:
             self.swa_model.eval()
 
+        logits_all = []
         pred_all = []
         y_all = []
-        for _, sample in enumerate(test_time_dataloader):
+        for _, sample in enumerate(tqdm(test_time_dataloader)):
             if len(sample) == 3:
                 x, y, _ = sample
             else:
@@ -252,6 +254,8 @@ class BaseTrainer:
                     pred = logits.reshape(-1, )
                 else:
                     pred = F.softmax(logits, dim=1).argmax(dim=1)
+                
+                logits_all.append(logits.detach().cpu().numpy() )
 
                 pred_all = list(pred_all) + \
                     pred.detach().cpu().numpy().tolist()
@@ -272,7 +276,10 @@ class BaseTrainer:
         if self.args.method in ['swa']:
             self.swa_model.train()
 
-        return metric
+        if return_probs:
+            return metric, logits_all, y_all
+        else:
+            return metric
 
     def network_featurize(self, test_time_dataloader):
         self.network.eval()
@@ -409,6 +416,11 @@ class BaseTrainer:
             'worst_ood': np.min(metrics)
         }, index=[0])
         results_df.to_csv(results_fname, mode='a', index=False, header=False)
+        wandb.log({
+            "Average OOD": np.mean(metrics),
+            "Worst OOD": np.min(metrics),
+            "All OOD": metrics
+        })
 
         logger.info(f'\nOOD Average Metric: \t{np.mean(metrics)}'
                     f'\nOOD Worst Metric: \t{np.min(metrics)}'
@@ -511,6 +523,20 @@ class BaseTrainer:
     def run_eval_features(self):
         self.train_offline()
         self.extract_features()
+    
+    def run_eval_timestamp(self, timestamp, mode=1):
+        self.eval_dataset.mode = mode
+        self.eval_dataset.update_current_timestamp(timestamp)
+        test_ood_dataloader = FastDataLoader(
+            dataset=self.eval_dataset,
+            batch_size=self.eval_batch_size,
+            num_workers=self.num_workers,
+            collate_fn=self.eval_collate_fn
+        )
+        acc, preds, labels = self.network_evaluation(test_ood_dataloader, return_probs=True)
+        logger.info(
+            f'OOD timestamp = {timestamp}: \t {self.eval_metric} is {acc}')
+        return acc, preds, labels
 
     def run(self):
         torch.cuda.empty_cache()
@@ -566,9 +592,19 @@ class BaseTrainer:
         torch.save(self.network.state_dict(), path)
         logger.info(f'Saving model at timestamp {timestamp} to path {path}.\n')
 
-    def load_model(self, timestamp, checkpoint_path=None):
-        if self.checkpoint_path:
+    def load_model(self, timestamp=None, checkpoint_path=None):
+        if checkpoint_path:
+            path = checkpoint_path
+        elif self.checkpoint_path:
             path = self.checkpoint_path
         else:
             path = self.get_model_path(timestamp)
-        self.network.load_state_dict(torch.load(path), strict=False)
+
+        weights = torch.load(path)
+        if "swa" in path:
+            tmp_weights = {}
+            for key, val in weights.items():
+                tmp_weights[key.replace("module.", "")] = val
+            weights = tmp_weights
+
+        self.network.load_state_dict(weights, strict=False)

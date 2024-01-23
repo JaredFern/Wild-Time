@@ -8,6 +8,7 @@ from datetime import date
 
 import numpy as np
 import torch
+import wandb
 from torch import cuda
 
 from wildtime.methods import loss_landscape, interpolation_plots
@@ -26,6 +27,7 @@ from wildtime.methods.simclr.simclr import SimCLR
 from wildtime.methods.swa.swa import SWA
 from wildtime.methods.swav.swav import SwaV
 
+wandb.login()
 device = 'cuda' if cuda.is_available() else 'cpu'
 
 def logger_init(args, train=False):
@@ -78,6 +80,11 @@ def logger_init(args, train=False):
             logging.FileHandler(f'{args.exp_path}/log.out', 'a')],
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
+    run = wandb.init(
+        # Set the project where this run will be logged
+        project=f"wildtime-{args.dataset}-{args.exp_name}",
+        # Track hyperparameters and run metadata
+        config=args)
 
     # Save Config as json file
     json_str = json.dumps(vars(args))
@@ -115,6 +122,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_oracle', action='store_true')
     parser.add_argument('--eval_lambda', action='store_true')
     parser.add_argument('--lambda_step_size', type=float, default=0.05)
+    parser.add_argument('--load_model', type=str, default="")
 
     # Timesteps
     parser.add_argument('--num_val_timesteps', type=int, default=1)
@@ -181,9 +189,9 @@ if __name__ == '__main__':
         'interpolation_metric': 'losses',
 
         'checkpoint_path': None,
-        'data_dir': '/projects/tir6/strubell/data/wilds/data',
-        'log_dir': '/projects/tir6/strubell/jaredfer/projects/wild-time/results',
-        'results_dir': '/projects/tir6/strubell/jaredfer/projects/wild-time/results',
+        'data_dir': '/data/tir/projects/tir6/strubell/data/wilds/data',
+        'log_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results',
+        'results_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results',
     }
     configs = {
         **getattr(

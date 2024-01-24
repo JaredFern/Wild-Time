@@ -23,19 +23,23 @@ def get_correctness(data):
     return corr
 
 
-def evaluate_method(corr, corr_exp):
+def evaluate_method(corr, corr_exp, diff_all=False):
     transferred, hard, learned, forgotten = defaultdict(list), defaultdict(list), defaultdict(list), defaultdict(list)
     for eval_split, (baseline, exp) in enumerate(zip(corr, corr_exp)):
         for train_step, (pred, pred_exp) in enumerate(zip(baseline, exp)):
             if train_step == 0: continue
-            # t, h, l, f = pairwise_pred_comparison(np.array([baseline[train_step-1], exp[train_step]]))
-            t, h, l, f = pairwise_pred_comparison(np.array([baseline[0], exp[-1]]))
+
+            if diff_all: 
+                t, h, l, f = pairwise_pred_comparison(np.array([baseline[0], exp[-1]]))
+            else:
+                t, h, l, f = pairwise_pred_comparison(np.array([baseline[train_step-1], exp[train_step]]))
 
             transferred[eval_split].append(t.sum())
             hard[eval_split].append(h.sum())
             learned[eval_split].append(l.sum())
             forgotten[eval_split].append(f.sum())
-            break
+            if diff_all:
+                break
     return transferred, hard, learned, forgotten
 
 def get_predictions(trainer, checkpoints, checkpoint_dir):
@@ -133,8 +137,7 @@ def find_learning_and_forgetting_events(labels, pred_labels=None, pred_logits=No
         hard_examples.append(example_categorization[1])
         learned_examples.append(example_categorization[2])
         forgotten_examples.append(example_categorization[3])
-        print(example_categorization[0].shape)
-
+ 
     transferred_examples = np.array(transferred_examples)
     hard_examples = np.array(hard_examples)
     learned_examples = np.array(learned_examples)

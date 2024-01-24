@@ -42,6 +42,8 @@ class BaseTrainer:
         # Training hyperparameters
         self.args = args
         self.train_update_iter = args.train_update_iter
+        self.offline_steps = args.offline_steps
+        self.online_steps = args.online_steps
         self.lisa = args.lisa
         self.mixup = args.mixup
         self.cut_mix = args.cut_mix
@@ -225,8 +227,7 @@ class BaseTrainer:
                 if self.args.load_model:
                     self.load_model(timestamp)
                 else:
-                    self.train_step(train_id_dataloader,
-                                    self.args.offline_steps)
+                    self.train_step(train_id_dataloader, self.offline_steps)
                     self.save_model("offline")
                 break
 
@@ -540,6 +541,9 @@ class BaseTrainer:
 
     def run(self):
         torch.cuda.empty_cache()
+        if self.args.checkpoint_path:
+            self.load_model()
+
         start_time = time.time()
 
         if self.args.difficulty:
@@ -599,6 +603,8 @@ class BaseTrainer:
             path = self.checkpoint_path
         else:
             path = self.get_model_path(timestamp)
+        
+        logger.info(f"Loading model from {path}")
 
         weights = torch.load(path)
         if "swa" in path:

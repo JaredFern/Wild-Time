@@ -97,7 +97,7 @@ class AGEM(BaseTrainer):
 
             self.optimizer.step()
 
-            if step == self.train_update_iter:
+            if step == self.online_steps:
                 if self.scheduler is not None:
                     self.scheduler.step()
                 self.end_task(dataloader)

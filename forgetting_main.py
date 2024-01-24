@@ -37,7 +37,8 @@ def _reinit_swa_model(trainer):
         trainer.swa_model = AveragedModel(trainer.network, avg_fn=trainer.ema_avg)
     return trainer
 
-def get_predictions(trainer, checkpoints, checkpoint_dir):
+
+def get_predictions(trainer, checkpoints, checkpoint_dir, mode=1):
     metrics = []
     preds = []
     labels = []
@@ -63,7 +64,8 @@ def get_predictions(trainer, checkpoints, checkpoint_dir):
                 update_bn(bn_dataloader, trainer.swa_model, device=trainer.args.device)
             else:
                 trainer.load_model(checkpoint_path=ckpt_path)
-            acc, pred, label = trainer.run_eval_timestamp(split, mode=1)
+        
+            acc, pred, label = trainer.run_eval_timestamp(split, mode=mode)
 
             split_preds.append(pred)
             split_labels.append(label)
@@ -275,7 +277,7 @@ if __name__ == "__main__":
     parser.add_argument('--exp_path', type=str, required=True)
     parser.add_argument('--eval_batch_size', type=int, default=64)
     parser.add_argument('--method', type=str, default='erm')
-    parser.add_argument('--swa_ewa_decay_factor', type=float, default=0.5)
+    parser.add_argument('--swa_ewa_lambda', type=float, default=0.5)
     args = parser.parse_args()
 
     EXP_PARAMS = {
@@ -298,7 +300,7 @@ if __name__ == "__main__":
         'torch_compile': False,
         'sam': False,
         'swa_ewa': True,
-        'swa_ewa_lambda': args.swa_ewa_decay_factor,
+        'swa_ewa_lambda': args.swa_ewa_lambda,
         'swa_steps': None,
         'swa_load_from_checkpoint': True,
 
@@ -316,7 +318,7 @@ if __name__ == "__main__":
         config =  {**configs_huffpost.configs_huffpost_erm, **EXP_PARAMS}
         eval_checkpoints = [f"time_{i}.pth" for i in range(2012, 2016)]
     if args.dataset == 'arxiv':
-        eval_checkpoints = [f"time_{i}.pth" for i in range(2007, 2016)]
+        eval_checkpoints = [f"time_{i}.pth" for i in range(2007, 2017)]
         config = {**configs_arxiv.configs_arxiv_erm, **EXP_PARAMS}
     if args.dataset == 'yearbook':
         eval_checkpoints = [f"time_{i}.pth" for i in range(1930, 1970)]

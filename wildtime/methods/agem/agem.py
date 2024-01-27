@@ -1,3 +1,4 @@
+import logging
 import os
 
 import numpy as np
@@ -7,6 +8,7 @@ from .buffer import Buffer
 from ..base_trainer import BaseTrainer
 from ..utils import prepare_data, forward_pass
 
+logger = logging.getLogger(__name__)
 
 class AGEM(BaseTrainer):
     """
@@ -96,6 +98,9 @@ class AGEM(BaseTrainer):
                     overwrite_grad(self.network.parameters, self.grad_xy, self.grad_dims)
 
             self.optimizer.step()
+
+            if step % 100 == 0: 
+                logger.info(f"Train Loss {loss}")
 
             if step == self.online_steps:
                 if self.scheduler is not None:

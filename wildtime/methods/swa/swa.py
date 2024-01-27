@@ -11,6 +11,7 @@ from ..dataloaders import FastDataLoader,InfiniteDataLoader
 from ..base_trainer import BaseTrainer
 # from torchcontrib.optim import SWA as SWA_optimizer
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
+from torch.utils.data import Subset
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ class SWA(BaseTrainer):
         super().__init__(args, dataset, network, criterion, optimizer, scheduler)
         self.network = self.network
         self.swa_scheduler = SWALR(self.optimizer, swa_lr=args.lr, anneal_epochs=1)
+        self.swa_ewa_lambda = args.swa_ewa_lambda
         self.update_bn_on_save = update_bn_on_save
 
         if args.swa_ewa:
@@ -54,16 +56,16 @@ class SWA(BaseTrainer):
             for timestep in self.train_dataset.ENV:
                 ckpt_path = os.path.join(model_path, f'time_{timestep}.pth')
                 weights = torch.load(ckpt_path)
-                self.network.load_state_dict(weights)
+                self.network.load_state_dict(weights, strict=False)
                 self.swa_model.update_parameters(self.network)
                 if timestep == self.split_time:
                     break
 
             # Update BN on last timestep in the train set
-            self.train_dataset.update_current_timestamp(timestep)
-            bn_dataloader = FastDataLoader( 
-                dataset=self.train_dataset, batch_size=self.mini_batch_size, num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
-            update_bn(bn_dataloader, self.swa_model, device=self.args.device)
+            # self.train_dataset.update_current_timestamp(timestep)
+            # bn_dataloader = FastDataLoader( 
+            #     dataset=self.train_dataset, batch_size=self.mini_batch_size, num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+            # update_bn(bn_dataloader, self.swa_model, device=self.args.device)
 
 
         self.results_file = os.path.join(args.results_dir, f'{str(dataset)}-{str(self)}.pkl')
@@ -103,62 +105,83 @@ class SWA(BaseTrainer):
                     self.save_model("offline")
                 break
 
-    def create_csaw_from_ckpts(self, num_val_timesteps=1, lambda_val=0.50):
+    def create_csaw_from_ckpts(self, num_val_timesteps=1, lambda_val=0.50, wise_ft=False, init_ckpt=""):
         timesteps = self.train_dataset.ENV
-        ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: \
-            (1 - lambda_val) * averaged_model_parameter + lambda_val * model_parameter
+        
+        if self.args.dataset == "fmow":
+            self.network.__init__(self.args)
+        elif self.args.dataset in ['huffpost', 'arxiv']:
+            self.network.__init__(self.train_dataset.num_classes)
+        self.network.to(self.args.device)
 
+        self.ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: \
+            (1 - lambda_val) * averaged_model_parameter + lambda_val * model_parameter
+        self.swa_model = AveragedModel(self.network, avg_fn=self.ema_avg)
+    
         # Initialize average with the offline checkpoint
-        model_path = os.path.join(self.args.results_dir, self.args.exp_path, 'checkpoints')
-        temp_network = deepcopy(self.network)
-        if os.path.exists(os.path.join(model_path, 'time_offline.pth')):
-            init_weights = torch.load(os.path.join(model_path, f'time_offline.pth'))
-            temp_network.load_state_dict(init_weights)
-            self.swa_model = AveragedModel(temp_network, avg_fn=ema_avg)
-        elif os.path.exists(os.path.join(model_path, 'time_offline_swa.pth')):
-            init_weights = torch.load(os.path.join(model_path, f'time_offline_swa.pth'))
-            self.swa_model.load_state_dict(init_weights)
-            self.swa_model.avg_fn = ema_avg
+        model_path = os.path.join(self.args.results_dir, self.args.exp_path, 'checkpoints', init_ckpt)
+        if init_ckpt:
+            temp_network = deepcopy(self.network)
+            if os.path.exists(os.path.join(model_path, 'time_offline.pth')):
+                init_weights = torch.load(os.path.join(model_path, f'time_offline.pth'))
+                temp_network.load_state_dict(init_weights, strict=False)
+                self.swa_model = AveragedModel(temp_network, avg_fn=ema_avg)
+            elif os.path.exists(os.path.join(model_path, 'time_offline_swa.pth')):
+                init_weights = torch.load(os.path.join(model_path, f'time_offline_swa.pth'))
+                self.swa_model.load_state_dict(init_weights, strict=False)
+                self.swa_model.avg_fn = ema_avg
 
         metrics = []
         for i, t in enumerate(self.train_dataset.ENV):
             # Break on last `num_val_timesteps`
             if timesteps[i + num_val_timesteps] <= self.split_time:
+                if wise_ft and t != self.split_time: continue
+
                 ckpt_path = os.path.join(model_path, f'time_{t}.pth')
                 weights = torch.load(ckpt_path)
-                temp_network.load_state_dict(weights)
-                self.swa_model.update_parameters(temp_network)
-            elif t <= self.split_time:
-                self.val_dataset.mode = 1
-                self.val_dataset.update_current_timestamp(t)
-                val_dataloader = FastDataLoader(
-                    dataset=self.val_dataset, batch_size=self.eval_batch_size,
-                    num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
-                update_bn(val_dataloader, self.swa_model, device=self.args.device)
+                self.network.load_state_dict(weights, strict=False)
+                self.swa_model.update_parameters(self.network)
 
-            if t == self.split_time: break
+            if t == self.split_time:
+                break
+                # self.train_dataset.mode = 0
+                # self.train_dataset.update_current_timestamp(t)
+                # train_subset = Subset(self.train_dataset, range(1024))
+                # print("Update BN")
+                # train_dataloader = FastDataLoader(
+                #     dataset=train_subset, batch_size=self.eval_batch_size,
+                #     num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+                # update_bn(train_dataloader, self.swa_model, device=self.args.device)
 
-
-    def find_lambda(self, num_val_timesteps=1, step_size=0.05):
+    def find_lambda(self, num_val_timesteps=1, step_size=0.05, min_lambda=0.50):
         # WARNING: NOT COMPATIBLE WITH SHUFFLED INDICES; ASSUME ORDERED DATASETS 
+        # Hacky Reinit of Model
         timesteps = self.train_dataset.ENV
         lambda2metric = {}
 
-        for lambda_val in np.arange(0, 1.01, step_size):
+        for lambda_val in np.arange(min_lambda, 1.01, step_size):
             ema_avg = lambda averaged_model_parameter, model_parameter, num_averaged: \
                 (1 - lambda_val) * averaged_model_parameter + lambda_val * model_parameter
 
             # Initialize average with the offline checkpoint
+            if self.args.dataset == "fmow":
+                self.network.__init__(self.args)
+            elif self.args.dataset in ['huffpost', 'arxiv']:
+                self.network.__init__(self.train_dataset.num_classes)
+            self.network.to(self.args.device)
+
             model_path = os.path.join(self.args.results_dir, self.args.exp_path, 'checkpoints')
             temp_network = deepcopy(self.network)
             if os.path.exists(os.path.join(model_path, 'time_offline.pth')):
                 init_weights = torch.load(os.path.join(model_path, f'time_offline.pth'))
-                temp_network.load_state_dict(init_weights)
+                temp_network.load_state_dict(init_weights, strict=False)
                 self.swa_model = AveragedModel(temp_network, avg_fn=ema_avg)
             elif os.path.exists(os.path.join(model_path, 'time_offline_swa.pth')):
                 init_weights = torch.load(os.path.join(model_path, f'time_offline_swa.pth'))
-                self.swa_model.load_state_dict(init_weights)
+                self.swa_model.load_state_dict(init_weights, strict=False)
                 self.swa_model.avg_fn = ema_avg
+            else:
+                self.swa_model = AveragedModel(self.network, avg_fn=ema_avg)
 
             metrics = []
             for i, t in enumerate(timesteps):
@@ -166,22 +189,30 @@ class SWA(BaseTrainer):
                 if timesteps[i + num_val_timesteps] <= self.split_time:
                     ckpt_path = os.path.join(model_path, f'time_{t}.pth')
                     weights = torch.load(ckpt_path)
-                    temp_network.load_state_dict(weights)
+                    temp_network.load_state_dict(weights, strict=False)
                     self.swa_model.update_parameters(temp_network)
                 elif t <= self.split_time:
-                    self.val_dataset.mode = 1
-                    self.val_dataset.update_current_timestamp(t)
-                    val_dataloader = FastDataLoader(
-                        dataset=self.val_dataset, batch_size=self.eval_batch_size,
+                    # self.train_dataset.mode = 0
+                    # self.train_dataset.update_current_timestamp(timesteps[i-1])
+                    # train_subset = Subset(self.train_dataset, range(2048))
+                    # train_dataloader = FastDataLoader(
+                    #     dataset=train_subset, batch_size=self.eval_batch_size,
+                    #     num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+                    # update_bn(train_dataloader, self.swa_model, device=self.args.device)
+                    self.train_dataset.update_current_timestamp(t)
+                    # train_subset = Subset(self.train_dataset, range(2048 * 4 ))
+                    train_dataloader = FastDataLoader(
+                        dataset=self.train_dataset, batch_size=self.eval_batch_size,
                         num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
-                    update_bn(val_dataloader, self.swa_model, device=self.args.device)
-                    metric = self.network_evaluation(val_dataloader)
+                    metric = self.network_evaluation(train_dataloader)
+
+                    print(f"Eval on {t} with decay {lambda_val}: {metric}")
                     metrics.append(metric)
 
                 if t == self.split_time: break
 
             lambda2metric[lambda_val] = np.mean(metrics)
-            logger.info(f'Validation Loss with Lambda {round(lambda_val, 2)}: {lambda2metric[lambda_val]}')
+            print(f'Validation Loss with Lambda {round(lambda_val, 2)}: {lambda2metric[lambda_val]}')
         return lambda2metric
 
 
@@ -192,7 +223,7 @@ class SWA(BaseTrainer):
         # self.optimizer.swap_swa_sgd()
         swa_model_path = self.get_model_path(str(timestamp) + "_swa")
         torch.save(self.swa_model.state_dict(), swa_model_path)
-        self.swa_model.load_state_dict(backup_state_dict)
+        self.swa_model.load_state_dict(backup_state_dict, strict=False)
 
     def load_swa_model(self, timestamp):
         swa_model_path = self.get_model_path(timestamp)

@@ -21,12 +21,22 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (4096, rlimit[1]))
 
 import torch.multiprocessing
 from torch.optim.swa_utils import AveragedModel, SWALR, update_bn
+from torch.utils.data import Subset
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
+logger = logging.getLogger(__name__)
 
 def _reinit_swa_model(trainer):
     model_path = os.path.join(trainer.args.results_dir, trainer.args.exp_path, 'checkpoints')
+    if trainer.args.dataset == "fmow":
+        trainer.network.__init__(trainer.args)
+    elif trainer.args.dataset in ['huffpost', 'arxiv']:
+        trainer.network.__init__(trainer.train_dataset.num_classes)
+
+    trainer.network.to(trainer.args.device)
+    trainer.swa_model = AveragedModel(trainer.network, avg_fn=trainer.ema_avg)
+
     if os.path.exists(os.path.join(model_path, 'time_offline_swa.pth')):
         init_weights = torch.load(os.path.join(model_path, f'time_offline_swa.pth'))
         trainer.swa_model.load_state_dict(init_weights, strict=False)
@@ -53,14 +63,13 @@ def get_predictions(trainer, checkpoints, checkpoint_dir, mode=1):
             ckpt_path = os.path.join(checkpoint_dir, 'checkpoints', ckpt)
             if trainer.args.method == "swa":
                 tmp_network = deepcopy(trainer.network)
-                tmp_network.load_state_dict(torch.load(ckpt_path))
+                tmp_network.load_state_dict(torch.load(ckpt_path), strict=False)
                 trainer.swa_model.update_parameters(tmp_network)
-                trainer.eval_dataset.update_current_timestamp(split)
+                trainer.train_dataset.update_current_timestamp(split)
+                train_subset = Subset(trainer.train_dataset, range(256))
                 bn_dataloader = FastDataLoader(
-                    dataset=trainer.eval_dataset, 
-                    batch_size=trainer.eval_batch_size,
-                    num_workers=trainer.num_workers,
-                    collate_fn=trainer.eval_collate_fn)
+                        dataset=train_subset, batch_size=trainer.eval_batch_size,
+                        num_workers=trainer.num_workers, collate_fn=trainer.eval_collate_fn)
                 update_bn(bn_dataloader, trainer.swa_model, device=trainer.args.device)
             else:
                 trainer.load_model(checkpoint_path=ckpt_path)
@@ -77,14 +86,13 @@ def get_predictions(trainer, checkpoints, checkpoint_dir, mode=1):
     return metrics, preds, labels
 
 
-def save_predictions_and_metadata(fpath, pred_probs, pred_labels, events, labels, model, eval_checkpoints,):
+def save_predictions_and_metadata(fpath, pred_probs, pred_labels, events, labels, eval_checkpoints,):
     transferred = [i[0] for i in events]
     hard = [i[1] for i in events]
     learned = [i[2] for i in events]
     forgotten = [i[3] for i in events]
 
     data = dict({
-        "model": model,
         "eval_checkpoints": eval_checkpoints,
         "pred_probs": pred_probs,
         "pred_labels": pred_labels,
@@ -253,11 +261,20 @@ def plot_sankey(y_pos, color, source, target, value, title):
     return fig
 
 # %%
-def predict_and_save_data(trainer, model_name, data_dir, eval_checkpoints):
+def predict_and_save_data(trainer, data_dir, eval_checkpoints, mode):
+    if not trainer.swa_ewa_lambda:
+        print(f"Finding Optimal Decay Factor on Last Splits")
+        lambda2metric = trainer.find_lambda(num_val_timesteps=2, step_size=0.05)
+        lambda_optimal = max(lambda2metric, key=lambda k: lambda2metric[k])
+        print(f"Optimal Decay Factor: {lambda_optimal}")
+        trainer.create_csaw_from_ckpts(0, lambda_val=lambda_optimal, wise_ft=False)
+        trainer.args.swa_ewa_lambda = lambda_optimal
+
     _, pred_logits, labels = get_predictions(
         trainer,
         checkpoints=eval_checkpoints,
-        checkpoint_dir=data_dir
+        checkpoint_dir=data_dir,
+        mode=mode
     )
 
     pred_probs = [softmax(logits, axis=2) for logits in pred_logits]
@@ -267,24 +284,26 @@ def predict_and_save_data(trainer, model_name, data_dir, eval_checkpoints):
     events = [find_learning_and_forgetting_events(label, pred_label) for label, pred_label in zip(labels, pred_labels)]
 
     fpath = os.path.join(data_dir, f"preds_meta_{trainer.args.method}_{trainer.args.swa_ewa_lambda}.pkl")
-    save_predictions_and_metadata(fpath, pred_probs, pred_labels, events, labels, model_name, eval_checkpoints,)
+    save_predictions_and_metadata(fpath, pred_probs, pred_labels, events, labels,  eval_checkpoints,)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset', type=str, required=True)
-    parser.add_argument('--model', type=str, required=True)
-    parser.add_argument('--exp_path', type=str, required=True)
-    parser.add_argument('--eval_batch_size', type=int, default=64)
-    parser.add_argument('--method', type=str, default='erm')
-    parser.add_argument('--swa_ewa_lambda', type=float, default=0.5)
+    parser.add_argument('--random_seed', type=int, required=True)
+    parser.add_argument('--results_dir', type=str)
+    parser.add_argument('--exp_path', type=str)
+    parser.add_argument('--eval_batch_size', type=int, default=256)
+    parser.add_argument('--eval_mode', type=int, default=2)
+    parser.add_argument('--method', type=str, default='swa')
+    parser.add_argument('--swa_ewa_lambda', type=float, default=0)
     args = parser.parse_args()
 
     EXP_PARAMS = {
         'dataset': args.dataset,
         'method': args.method,
         'device': 0,
-        'random_seed': 1,
+        'random_seed': args.random_seed,
         'num_workers': 0,
         'eval_batch_size': args.eval_batch_size,
 
@@ -293,6 +312,8 @@ if __name__ == "__main__":
         'eval_features': False,
         'linear_probe': False,
         'online': False,
+        'online_steps': 0,
+        'offline_steps': 0,
 
         'eval_all_timestamps': False,
 
@@ -302,12 +323,12 @@ if __name__ == "__main__":
         'swa_ewa': True,
         'swa_ewa_lambda': args.swa_ewa_lambda,
         'swa_steps': None,
-        'swa_load_from_checkpoint': True,
+        'swa_load_from_checkpoint': False,
 
         'data_dir': '/data/tir/projects/tir6/strubell/data/wilds/data',
-        'log_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results',
-        'results_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results',
-        'exp_path': args.exp_path,
+        'log_dir': args.results_dir,
+        'results_dir': args.results_dir,
+        'exp_path': f"{args.dataset}/{args.exp_path}/seed_{args.random_seed}",
         'checkpoint_path': None,
     }
 
@@ -330,4 +351,4 @@ if __name__ == "__main__":
     trainer = baseline_trainer.init(experimental_config)
 
     data_dir = os.path.join(config['results_dir'], config['exp_path'])
-    predict_and_save_data(trainer, args.model, data_dir, eval_checkpoints)
+    predict_and_save_data(trainer, data_dir, eval_checkpoints, args.eval_mode)

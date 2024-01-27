@@ -95,8 +95,11 @@ class BaseTrainer:
         progress_bar = tqdm(total=num_steps)
         self.val_dataset.update_current_timestamp(timestamp)
         val_dataloader = FastDataLoader(
-            dataset=self.val_dataset, weights=None, batch_size=self.mini_batch_size,
+            dataset=self.val_dataset, batch_size=self.eval_batch_size,
             num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+
+        wandb.define_metric(f"time_{timestamp}/step")
+        wandb.define_metric(f"time_{timestamp}/*", step_metric=f"time_{timestamp}/step")
 
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
@@ -114,7 +117,11 @@ class BaseTrainer:
             pred = F.softmax(logits, dim=1).argmax(dim=1)
             correct = (pred == y).sum().item()
             metric = correct / float(y.shape[0])
-            wandb.log({f'train_loss_{timestamp}': loss.item(), f'train_metric_{timestamp}': metric}, step=step)
+            wandb.log({
+                f'time_{timestamp}/loss': loss.item(), 
+                f'time_{timestamp}/metric': metric,
+                f'time_{timestamp}/step': step
+            })
 
             if self.sam:
                 self.optimizer.first_step(zero_grad=True)
@@ -134,8 +141,13 @@ class BaseTrainer:
             
             if step % self.args.val_steps == 0:
                 metric, logits, labels = self.network_evaluation(val_dataloader, return_probs=True)
+                logits = torch.Tensor(logits).to('cuda')
+                labels = torch.Tensor(labels).type(torch.LongTensor).to('cuda')
                 loss = self.criterion(logits, labels)
-                wandb.log({f'val_metric_{timestamp}': metric, f'val_loss_{timestamp}': loss}, step=step)
+                wandb.log({
+                    f'time_{timestamp}/val_metric': metric, 
+                    f'time_{timestamp}/val_loss': loss
+                })
                 
             if step == num_steps:
                 if self.scheduler is not None:
@@ -293,7 +305,7 @@ class BaseTrainer:
             self.swa_model.train()
 
         if return_probs:
-            return metric, logits_all, y_all
+            return metric,  np.vstack(logits_all), y_all
         else:
             return metric
 

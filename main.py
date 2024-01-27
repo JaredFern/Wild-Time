@@ -45,9 +45,9 @@ def logger_init(args, train=False):
         eval_setting = 'eval_stream'
 
     if not hasattr(args, 'exp_name') or args.exp_name is None:
-        args.exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{eval_setting}"
+        args.exp_name = f"{args.dataset}_{args.method}_{eval_setting}"
     else:
-        args.exp_name = f"{date.today().strftime('%m%d')}_{args.dataset}_{args.method}_{args.exp_name}"
+        args.exp_name = f"{args.dataset}_{args.method}_{args.exp_name}"
 
     if not hasattr(args, 'exp_path') or args.exp_path is None:
         args.exp_path = os.path.join(args.log_dir, args.exp_name)
@@ -116,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument('--mini_batch_size', type=int)
     parser.add_argument('--offline_steps', type=int, default=3000)
     parser.add_argument('--online_steps', type=int, default=250)
-    parser.add_argument('--val_steps', type=int, default=250)
+    parser.add_argument('--val_steps', type=int, default=100)
     parser.add_argument('--eval_fix', action='store_true')
     parser.add_argument('--eval_stream', action='store_true')
     parser.add_argument('--eval_warmstart_finetune', action='store_true')

@@ -113,6 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('--torch_compile', action='store_true')
 
     # Experimental Setting
+    parser.add_argument('--mini_batch_size', type=int)
     parser.add_argument('--offline_steps', type=int, default=3000)
     parser.add_argument('--online_steps', type=int, default=250)
     parser.add_argument('--eval_fix', action='store_true')
@@ -160,7 +161,6 @@ if __name__ == '__main__':
         'device': 0,
         'random_seed': 0,
         'num_workers': 8,
-        # 'mini_batch_size': 128,
         'eval_batch_size': 512,
         'linear_probe_iter': None,
         'linear_probe': False,
@@ -190,8 +190,8 @@ if __name__ == '__main__':
 
         'checkpoint_path': None,
         'data_dir': '/data/tir/projects/tir6/strubell/data/wilds/data',
-        'log_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results',
-        'results_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results',
+        'log_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results/icml',
+        'results_dir': '/data/tir/projects/tir6/strubell/jaredfer/projects/wild-time/results/icml',
     }
     configs = {
         **getattr(

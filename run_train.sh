@@ -12,13 +12,15 @@ if [ $1 = "fmow" ]; then
     WARMSTART_STEPS=3000;
     ONLINE_STEPS=500;
     WARMSTART_CKPT_PATH="";
+    BATCH_SIZE=64;
 elif [ $1 = "huffpost" ]; then
     DATASET="huffpost";
-    OFFLINE_STEPS=3000;
-    WARMSTART_STEPS=3000;
-    OFFLINE_SWA_STEPS=500;
-    ONLINE_STEPS=500;
+    OFFLINE_STEPS=6000;
+    WARMSTART_STEPS=6000;
+    OFFLINE_SWA_STEPS=1000;
+    ONLINE_STEPS=1000;
     WARMSTART_CKPT_PATH="";
+    BATCH_SIZE=32;
 elif [ $1 = "arxiv" ]; then
     DATASET="arxiv";
     OFFLINE_STEPS=6000;
@@ -26,13 +28,15 @@ elif [ $1 = "arxiv" ]; then
     OFFLINE_SWA_STEPS=1000;
     ONLINE_STEPS=1000;
     WARMSTART_CKPT_PATH="";
+    BATCH_SIZE=64;
 elif [ $1 = "yearbook" ]; then
     DATASET="yearbook";
     OFFLINE_STEPS=3000;
     WARMSTART_STEPS=3000;
-    OFFLINE_SWA_STEPS=500;
-    ONLINE_STEPS=500;
+    OFFLINE_SWA_STEPS=100;
+    ONLINE_STEPS=100;
     WARMSTART_CKPT_PATH="";
+    BATCH_SIZE=32;
 elif [ $1 = "mimic_m" ]; then
     DATASET="mimic_mortality";
     OFFLINE_STEPS=3000;
@@ -40,18 +44,19 @@ elif [ $1 = "mimic_m" ]; then
     OFFLINE_SWA_STEPS=500;
     ONLINE_STEPS=500;
     WARMSTART_CKPT_PATH="";
+    BATCH_SIZE=128;
 fi;
 
 
 METHOD=$2
-SEED=$SLURM_ARRAY_TASK_ID
+SEED=$3 # $SLURM_ARRAY_TASK_ID
 
 
 source activate wild-time;
 
 python main.py \
     --train --eval_fix --method $METHOD  --exp_name ${METHOD}_${SEED} --dataset $DATASET \
-    --offline_steps $OFFLINE_STEPS --online_steps $ONLINE_STEPS  \
+    --mini_batch_size $BATCH_SIZE --offline_steps $OFFLINE_STEPS --online_steps $ONLINE_STEPS  \
     --random_seed $SEED;
 
 # python main.py \

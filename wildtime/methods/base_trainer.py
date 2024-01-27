@@ -86,26 +86,35 @@ class BaseTrainer:
             base_trainer_str += f'-eval_stream'
         return base_trainer_str
 
-    def train_step(self, dataloader, num_steps=None):
+    def train_step(self, dataloader, num_steps=None, timestamp=0):
         if num_steps == None:
             num_steps = self.args.train_update_iter
         self.network.train()
         loss_all = []
 
         progress_bar = tqdm(total=num_steps)
+        self.val_dataset.update_current_timestamp(timestamp)
+        val_dataloader = FastDataLoader(
+            dataset=self.val_dataset, weights=None, batch_size=self.mini_batch_size,
+            num_workers=self.num_workers, collate_fn=self.eval_collate_fn)
+
         for step, (x, y) in enumerate(dataloader):
             x, y = prepare_data(x, y, str(self.train_dataset))
 
             if self.sam:
                 self.optimizer.enable_running_stats(self.network)
 
-            loss, _, y = forward_pass(
+            loss, logits, y = forward_pass(
                 x, y, self.train_dataset, self.network,
                 self.criterion, self.lisa, self.mixup, self.cut_mix, self.mix_alpha)
             loss_all.append(loss.item())
             self.optimizer.zero_grad()
-            wandb.log({'train_loss': loss.item()})
             loss.backward()
+
+            pred = F.softmax(logits, dim=1).argmax(dim=1)
+            correct = (pred == y).sum().item()
+            metric = correct / float(y.shape[0])
+            wandb.log({f'train_loss_{timestamp}': loss.item(), f'train_metric_{timestamp}': metric}, step=step)
 
             if self.sam:
                 self.optimizer.first_step(zero_grad=True)
@@ -121,7 +130,13 @@ class BaseTrainer:
             if self.args.method in ['swa'] and self.args.swa_steps and step % int(self.args.swa_steps) == 0:
                 logger.info("==== Updating Weights of Averaged Model ====")
                 self.swa_model.update_parameters(self.network)
-
+                
+            
+            if step % self.args.val_steps == 0:
+                metric, logits, labels = self.network_evaluation(val_dataloader, return_probs=True)
+                loss = self.criterion(logits, labels)
+                wandb.log({f'val_metric_{timestamp}': metric, f'val_loss_{timestamp}': loss}, step=step)
+                
             if step == num_steps:
                 if self.scheduler is not None:
                     self.scheduler.step()
@@ -166,7 +181,7 @@ class BaseTrainer:
                     self.train_dataset.ssl_training = True
                 train_dataloader = InfiniteDataLoader(dataset=self.train_dataset, weights=None, batch_size=self.mini_batch_size,
                                                       num_workers=self.num_workers, collate_fn=self.train_collate_fn)
-                self.train_step(train_dataloader, self.args.online_steps)
+                self.train_step(train_dataloader, self.args.online_steps, timestamp=timestamp)
                 self.save_model(timestamp)
                 if (
                     # not self.args.eval_warmstart_finetune and

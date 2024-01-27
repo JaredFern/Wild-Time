@@ -116,6 +116,7 @@ if __name__ == '__main__':
     parser.add_argument('--mini_batch_size', type=int)
     parser.add_argument('--offline_steps', type=int, default=3000)
     parser.add_argument('--online_steps', type=int, default=250)
+    parser.add_argument('--val_steps', type=int, default=250)
     parser.add_argument('--eval_fix', action='store_true')
     parser.add_argument('--eval_stream', action='store_true')
     parser.add_argument('--eval_warmstart_finetune', action='store_true')
